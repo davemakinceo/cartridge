@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#121216">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Cartridge</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#121216; --panel:#1c1c22; --panel2:#26262e; --line:#33333d;
+  --text:#ececf1; --mute:#9a9aa8; --accent:#e5484d; --accent2:#f2c14e;
+  --btn:#2b2b34; --btn-on:#4a4a58;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.hidden{display:none!important}
+
+/* ---------- Library ---------- */
+#library{min-height:100%;padding:calc(env(safe-area-inset-top) + 20px) 18px calc(env(safe-area-inset-bottom) + 24px);max-width:720px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.brand-mark{width:40px;height:40px;border-radius:10px;background:var(--accent);display:grid;place-items:center}
+.brand-mark span{width:18px;height:12px;border:3px solid #fff;border-radius:3px}
+.brand h1{font-size:22px;margin:0;letter-spacing:.3px}
+.brand p{margin:0;color:var(--mute);font-size:13px}
+.add{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:14px;
+  background:var(--accent);color:#fff;font-weight:600;font-size:16px}
+.hint{color:var(--mute);font-size:13px;margin:10px 2px 22px}
+.list-h{display:flex;justify-content:space-between;align-items:baseline;margin:0 2px 8px;color:var(--mute);font-size:13px;text-transform:uppercase;letter-spacing:.8px}
+.rom{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:var(--panel);margin-bottom:8px}
+.rom-play{flex:1;display:flex;align-items:center;gap:12px;text-align:left;min-width:0}
+.rom-ico{flex:none;width:44px;height:44px;border-radius:8px;background:var(--panel2);display:grid;place-items:center;font-weight:700;color:var(--accent2)}
+.rom-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rom-meta{color:var(--mute);font-size:12px}
+.rom-del{flex:none;width:40px;height:40px;border-radius:10px;color:var(--mute)}
+.rom-del:active{background:var(--panel2)}
+.empty{padding:28px 16px;text-align:center;color:var(--mute);border:1px dashed var(--line);border-radius:14px}
+.foot{margin-top:26px;color:var(--mute);font-size:12px;line-height:1.5}
+.foot b{color:var(--text);font-weight:600}
+
+/* ---------- Player ---------- */
+#player{position:fixed;inset:0;display:flex;flex-direction:column;background:#000;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  touch-action:none;user-select:none;-webkit-user-select:none}
+.topbar{flex:none;display:flex;align-items:center;gap:8px;padding:6px 8px;background:#000;z-index:3}
+.topbar .title{flex:1;color:var(--mute);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:40px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--text);background:#16161b}
+.ibtn.on{background:var(--accent);color:#fff}
+.ibtn svg{width:20px;height:20px}
+#screenWrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;position:relative}
+#screen{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;display:block}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(20,20,26,.92);border:1px solid var(--line);
+  padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:5;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* controls (portrait) */
+#pad{flex:none;position:relative;height:min(46vh,340px);background:var(--bg);border-top:1px solid #000}
+.dpad{position:absolute;left:6%;top:50%;width:min(42vw,170px);aspect-ratio:1;transform:translateY(-55%)}
+.dpad .arm{position:absolute;background:var(--btn);}
+.dpad .h{left:0;right:0;top:33.3%;height:33.4%;border-radius:10px}
+.dpad .v{top:0;bottom:0;left:33.3%;width:33.4%;border-radius:10px}
+.dpad .dir{position:absolute;width:33.4%;height:33.4%;display:grid;place-items:center;color:#5b5b68;font-size:13px;z-index:1}
+.dpad .dir.on{color:var(--text)}
+.dpad .dir.on::before{content:"";position:absolute;inset:0;background:var(--btn-on);border-radius:10px;z-index:-1}
+.d-up{left:33.3%;top:0}.d-down{left:33.3%;bottom:0}.d-left{left:0;top:33.3%}.d-right{right:0;top:33.3%}
+.abtns{position:absolute;right:5%;top:50%;transform:translateY(-55%);width:min(44vw,180px);aspect-ratio:1.15}
+.rbtn{position:absolute;width:44%;aspect-ratio:1;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:18px;
+  display:grid;place-items:center;box-shadow:0 4px 0 #8f2226}
+.rbtn.on{transform:translateY(3px);box-shadow:0 1px 0 #8f2226;filter:brightness(1.15)}
+.b-a{right:0;top:8%}.b-b{left:0;bottom:8%}
+.tbtn{position:absolute;width:28%;aspect-ratio:1;border-radius:50%;background:#4a2427;color:#f3a7aa;font-size:11px;font-weight:700;display:grid;place-items:center}
+.tbtn.on{filter:brightness(1.4)}
+.t-a{right:4%;bottom:-6%}.t-b{left:2%;top:-8%}
+.mid{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);display:flex;gap:18px}
+.pill{padding:9px 16px;border-radius:999px;background:var(--btn);color:var(--mute);font-size:11px;font-weight:700;letter-spacing:1px}
+.pill.on{background:var(--btn-on);color:var(--text)}
+.noturbo .tbtn{display:none}
+
+/* landscape: overlay controls on the sides */
+@media (orientation:landscape){
+  .topbar{position:absolute;top:env(safe-area-inset-top);left:0;right:0;background:transparent;pointer-events:none;justify-content:flex-end}
+  .topbar .title{display:none}
+  .topbar .ibtn{pointer-events:auto;background:rgba(22,22,27,.7)}
+  #pad{position:absolute;inset:0;height:auto;background:transparent;border:0;pointer-events:none}
+  #pad > *{pointer-events:auto}
+  .dpad{left:3%;width:min(30vh,190px);top:58%}
+  .abtns{right:3%;width:min(32vh,200px);top:58%}
+  .mid{bottom:4%}
+  .dpad .arm,.pill{opacity:.75}
+  .rbtn{opacity:.85}
+}
+
+/* menu sheet */
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet-in{width:100%;max-width:520px;background:var(--panel);border-radius:18px 18px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:90vh;overflow:auto}
+.sheet-in h3{margin:4px 4px 12px;font-size:15px;color:var(--mute);font-weight:600}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.slot{background:var(--panel2);border-radius:12px;padding:8px;text-align:center;font-size:12px;color:var(--mute)}
+.slot canvas{width:100%;aspect-ratio:256/240;background:#000;border-radius:6px;display:block;margin-bottom:6px;image-rendering:pixelated}
+.slot .row{display:flex;gap:6px;margin-top:6px}
+.slot .row button{flex:1;padding:8px 0;border-radius:8px;background:var(--btn);color:var(--text);font-size:12px;font-weight:600}
+.slot .row button:disabled{opacity:.35}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{padding:13px;border-radius:12px;background:var(--panel2);text-align:left;font-size:14px}
+.opt small{display:block;color:var(--mute);font-size:12px}
+.opt.wide{grid-column:1/-1;text-align:center;background:var(--btn)}
+.opt.danger{color:#ff8b8e}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;display:flex;align-items:center;justify-content:center;padding:24px}
+.dlg-in{background:var(--panel);border-radius:16px;padding:18px;max-width:380px;width:100%;white-space:pre-line}
+.dlg-row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+.dlg-row button{padding:10px 16px;border-radius:10px;background:var(--btn);font-weight:600}
+.dlg-row .ok{background:var(--accent);color:#fff}
+
+/* systems */
+.chips{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px;scrollbar-width:none}
+.chip{flex:none;padding:7px 12px;border-radius:999px;background:var(--panel);color:var(--mute);font-size:13px;font-weight:600}
+.chip.on{background:var(--text);color:var(--bg)}
+.rom-ico{font-size:11px;letter-spacing:.3px;color:#fff}
+#ejsPlayer{position:fixed;inset:0;background:#000;z-index:4}
+#ejsFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+#ejsBack{position:absolute;left:calc(env(safe-area-inset-left) + 8px);top:calc(env(safe-area-inset-top) + 8px);z-index:2;
+  width:38px;height:38px;border-radius:10px;background:rgba(22,22,27,.6);display:grid;place-items:center;color:#fff}
+#ejsBack svg{width:20px;height:20px}
+#ejsLoading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--mute);font-size:14px;pointer-events:none}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.pick button{padding:12px;border-radius:10px;background:var(--btn);text-align:left;font-size:14px}
+.offline{margin-top:14px;width:100%;padding:12px;border-radius:12px;background:var(--panel);color:var(--text);font-size:14px;font-weight:600}
+.offline small{display:block;color:var(--mute);font-weight:400;font-size:12px}
+/* controller */
+.gp-banner{display:none;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#1f2a1f;color:#b9f0b9;font-size:13px;margin:-10px 0 20px}
+.gp-banner.show{display:flex}
+.gp-banner.idle{background:var(--panel);color:var(--mute)}
+.gp-banner svg{flex:none}
+.gpfocus{outline:3px solid var(--accent2)!important;outline-offset:2px}
+#player.gpmode #pad{display:none}
+#player.gpmode .topbar{opacity:.35}
+.badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:6px;background:var(--panel2);color:var(--text);font-size:11px;font-weight:700;text-align:center}
+.maprow{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;border-radius:12px;background:var(--panel2);margin-bottom:6px;font-size:14px}
+.maprow b{font-weight:600}
+.maprow span{color:var(--mute);font-size:13px}
+.maprow.listen span{color:var(--accent2)}
+</style>
+</head>
+<body>
+
+<!-- ================= LIBRARY ================= -->
+<section id="library">
+  <div class="brand">
+    <div class="brand-mark"><span></span></div>
+    <div><h1>Cartridge</h1><p>Retro console emulator · runs offline</p></div>
+  </div>
+  <button class="add" id="addBtn">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Add ROM from phone
+  </button>
+  <input type="file" id="fileIn" accept="*/*" multiple hidden>
+  <p class="hint">NES, Game Boy / Color / Advance, SNES, Genesis, Master System, Game Gear, N64, PlayStation, Atari 2600, TurboGrafx-16 and Lynx. Zipped games work too. Games stay on this device.</p>
+  <div class="gp-banner" id="gpBanner">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01M7 5h10a4 4 0 014 4l1 7a3 3 0 01-5 2l-2-2H9l-2 2a3 3 0 01-5-2l1-7a4 4 0 014-4z"/></svg>
+    <span id="gpText">Controller connected</span>
+  </div>
+  <div class="list-h"><span>Your library</span><span id="count"></span></div>
+  <div class="chips" id="chips"></div>
+  <div id="roms"></div>
+  <div class="foot">
+    <b>Install:</b> in Chrome, tap ⋮ → <b>Add to Home screen</b> (or <b>Install app</b>). It then opens full-screen and works with no connection.<br>
+    <b>Controllers:</b> clip in a Backbone One, or pair an Xbox, PlayStation, Switch Pro or 8BitDo pad over Bluetooth (or plug in USB). Press any button once after opening the app so the browser picks it up. The first controller is Player 1 and a second one is Player 2. Remap buttons from the in-game menu.<br>
+    <b>Saves:</b> in-game saves are kept automatically. NES has 3 quick-save slots in its menu; other systems have save/load state in their bottom bar.<br>
+    <b>PlayStation:</b> use .chd or .pbp files, or a .zip holding the .cue + .bin.<br>
+    Only play ROMs you have the right to use — homebrew games or dumps of cartridges you own.<br>
+    Non-NES systems use EmulatorJS and RetroArch cores (GPL-3.0).
+    <button class="offline" id="offlineBtn">Download every system for offline play<small id="offlineS">Cores download on first use otherwise (about 1–1.5 MB each)</small></button>
+  </div>
+</section>
+
+<!-- ================= PLAYER ================= -->
+<section id="player" class="hidden">
+  <div class="topbar">
+    <button class="ibtn" id="backBtn" aria-label="Library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="title" id="gameTitle"></div>
+    <button class="ibtn" id="ffBtn" aria-label="Fast forward"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6l8 6-8 6zM12 6l8 6-8 6z"/></svg></button>
+    <button class="ibtn" id="muteBtn" aria-label="Sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="waves" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg></button>
+    <button class="ibtn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+  </div>
+  <div id="screenWrap"><canvas id="screen" width="256" height="240"></canvas><div id="toast"></div></div>
+  <div id="pad" class="noturbo">
+    <div class="dpad" id="dpad">
+      <div class="arm h"></div><div class="arm v"></div>
+      <div class="dir d-up" data-d="up">▲</div><div class="dir d-down" data-d="down">▼</div>
+      <div class="dir d-left" data-d="left">◀</div><div class="dir d-right" data-d="right">▶</div>
+    </div>
+    <div class="abtns">
+      <div class="rbtn b-a" data-b="A">A</div>
+      <div class="rbtn b-b" data-b="B">B</div>
+      <div class="tbtn t-a" data-b="TA">TA</div>
+      <div class="tbtn t-b" data-b="TB">TB</div>
+    </div>
+    <div class="mid">
+      <div class="pill" data-b="SELECT">SELECT</div>
+      <div class="pill" data-b="START">START</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= OTHER SYSTEMS (EmulatorJS in a frame) ================= -->
+<section id="ejsPlayer" class="hidden">
+  <div id="ejsLoading">Loading…</div>
+  <button id="ejsBack" aria-label="Library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+</section>
+
+<!-- ================= MENU ================= -->
+<div id="sheet" class="hidden">
+  <div class="sheet-in">
+    <h3>Save states</h3>
+    <div class="slots" id="slots"></div>
+    <h3>Options</h3>
+    <div class="opts">
+      <button class="opt" id="optTurbo">Turbo buttons<small id="optTurboS">Off</small></button>
+      <button class="opt" id="optVib">Vibration<small id="optVibS">On</small></button>
+      <button class="opt" id="optPad">Controller buttons<small>Remap your gamepad</small></button>
+      <button class="opt" id="optTouch">On-screen controls<small id="optTouchS">Auto</small></button>
+      <button class="opt" id="optFull">Full screen<small>Hide browser bars</small></button>
+      <button class="opt danger" id="optReset">Reset game<small>Like the console button</small></button>
+      <button class="opt wide" id="optClose">Resume</button>
+    </div>
+  </div>
+</div>
+
+<div id="mapSheet" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:11;display:flex;align-items:flex-end;justify-content:center">
+  <div class="sheet-in">
+    <h3>Controller buttons — tap a row, then press the button you want</h3>
+    <div id="mapRows"></div>
+    <div class="opts" style="margin-top:10px">
+      <button class="opt" id="mapReset" style="text-align:center">Reset to default</button>
+      <button class="opt" id="mapDone" style="text-align:center;background:var(--accent);color:#fff">Done</button>
+    </div>
+    <p class="hint" style="margin:12px 2px 0">Also on the controller: <b>Select + Start</b> or <b>Home</b> opens the menu, hold <b>R1</b> to fast-forward. A second controller plays as Player 2.</p>
+  </div>
+</div>
+<div id="dlg" class="hidden"><div class="dlg-in"><div id="dlgMsg"></div><div class="pick" id="dlgPick"></div><div class="dlg-row"><button id="dlgNo">Cancel</button><button class="ok" id="dlgOk">OK</button></div></div></div>
+<script>/*__JSNES__*/</script>
+<script>
+"use strict";
+(() => {
+const $ = (id) => document.getElementById(id);
+const C = jsnes.Controller;
+const FPS = 60.0988;
+function ask(msg, ok = "OK", cancel = null) {
+  return new Promise((res) => {
+    $("dlgMsg").textContent = msg; $("dlgOk").textContent = ok;
+    $("dlgNo").classList.toggle("hidden", !cancel); if (cancel) $("dlgNo").textContent = cancel;
+    $("dlg").classList.remove("hidden");
+    const done = (v) => { $("dlg").classList.add("hidden"); res(v); };
+    $("dlgOk").onclick = () => done(true); $("dlgNo").onclick = () => done(false);
+  });
+}
+
+/* ---------------- storage (IndexedDB) ---------------- */
+const DB = (() => {
+  let dbp;
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      const r = indexedDB.open("cartridge", 1);
+      r.onupgradeneeded = () => {
+        const db = r.result;
+        db.createObjectStore("roms", { keyPath: "id" });   // {id,name,size,added,played,data}
+        db.createObjectStore("kv");                          // sram:<id>, state:<id>:<n>, settings
+      };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    return dbp;
+  }
+  async function tx(store, mode, fn) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction(store, mode);
+      const s = t.objectStore(store);
+      const out = fn(s);
+      t.oncomplete = () => res(out && "result" in out ? out.result : undefined);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error);
+    });
+  }
+  return {
+    get: (store, key) => tx(store, "readonly", (s) => s.get(key)),
+    put: (store, val, key) => tx(store, "readwrite", (s) => s.put(val, key)),
+    del: (store, key) => tx(store, "readwrite", (s) => s.delete(key)),
+    all: (store) => tx(store, "readonly", (s) => s.getAll()),
+    delPrefix: (store, prefix) => tx(store, "readwrite", (s) =>
+      s.delete(IDBKeyRange.bound(prefix, prefix + "￿"))),
+  };
+})();
+
+const DEFAULT_MAP = { A: 0, B: 2, TA: 1, TB: 3, SELECT: 8, START: 9, up: 12, down: 13, left: 14, right: 15 };
+const SYSTEMS = {
+  nes:     { name: "NES",                 tag: "NES",  color: "#e5484d", exts: ["nes"] },
+  gb:      { name: "Game Boy",            tag: "GB",   color: "#7a8b3c", exts: ["gb"] },
+  gbc:     { name: "Game Boy Color",      tag: "GBC",  color: "#8e4ec6", exts: ["gbc"] },
+  gba:     { name: "Game Boy Advance",    tag: "GBA",  color: "#3e63dd", exts: ["gba"] },
+  snes:    { name: "SNES",                tag: "SNES", color: "#6e56cf", exts: ["sfc", "smc"] },
+  genesis: { name: "Genesis / Mega Drive", tag: "MD",  color: "#1f2937", exts: ["md", "gen", "smd"] },
+  sms:     { name: "Master System",       tag: "SMS",  color: "#2563eb", exts: ["sms"] },
+  gg:      { name: "Game Gear",           tag: "GG",   color: "#0f766e", exts: ["gg"] },
+  n64:     { name: "Nintendo 64",         tag: "N64",  color: "#16a34a", exts: ["n64", "z64", "v64"] },
+  psx:     { name: "PlayStation",         tag: "PS1",  color: "#64748b", exts: ["chd", "pbp", "cue", "m3u"] },
+  a2600:   { name: "Atari 2600",          tag: "2600", color: "#b45309", exts: ["a26"] },
+  pce:     { name: "TurboGrafx-16",       tag: "PCE",  color: "#ea580c", exts: ["pce"] },
+  lynx:    { name: "Atari Lynx",          tag: "LNX",  color: "#a16207", exts: ["lnx"] },
+};
+const EXT2SYS = {};
+for (const [k, v] of Object.entries(SYSTEMS)) v.exts.forEach((e) => (EXT2SYS[e] = k));
+const CORE_FILES = ["gambatte", "mgba", "snes9x", "genesis_plus_gx", "mupen64plus_next", "pcsx_rearmed", "stella2014", "mednafen_pce", "handy"];
+
+/* look inside the file when the extension doesn't settle it */
+function sniff(d) {
+  const at = (o, bytes) => bytes.every((b, i) => d[o + i] === b);
+  const str = (o, t) => [...t].every((c, i) => d[o + i] === c.charCodeAt(0));
+  if (at(0, [0x4e, 0x45, 0x53, 0x1a])) return "nes";
+  if (d.length > 0x150 && at(0x104, [0xce, 0xed, 0x66, 0x66])) return (d[0x143] & 0x80) ? "gbc" : "gb";
+  if (d.length > 0xc0 && at(0x04, [0x24, 0xff, 0xae, 0x51]) && d[0xb2] === 0x96) return "gba";
+  if (at(0, [0x80, 0x37, 0x12, 0x40]) || at(0, [0x37, 0x80, 0x40, 0x12]) || at(0, [0x40, 0x12, 0x37, 0x80])) return "n64";
+  if (str(0x100, "SEGA")) return "genesis";
+  if (str(0, "LYNX")) return "lynx";
+  if (str(0, "MComprHD")) return "psx";
+  if (str(0x7ff0, "TMR SEGA")) return "sms";
+  return null;
+}
+function pickSystem(fileName) {
+  return new Promise((res) => {
+    const pick = $("dlgPick");
+    pick.innerHTML = Object.entries(SYSTEMS).map(([k, v]) => `<button data-sys="${k}">${v.name}</button>`).join("");
+    pick.onclick = (e) => { const b = e.target.closest("[data-sys]"); if (b) { done(); res(b.dataset.sys); } };
+    const done = () => { pick.innerHTML = ""; pick.onclick = null; $("dlg").classList.add("hidden"); };
+    ask(`Which system is "${fileName}" for?`, "Skip").then(() => { pick.innerHTML = ""; res(null); });
+  });
+}
+
+let settings = { vib: true, turbo: false, muted: false, touch: "auto", gpMap: { ...DEFAULT_MAP } };
+
+/* ---------------- ROM import (.nes / .zip) ---------------- */
+function zipEntries(buf) {
+  const dv = new DataView(buf), out = [];
+  let eocd = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("Not a valid zip file");
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const nameLen = dv.getUint16(p + 28, true), extraLen = dv.getUint16(p + 30, true), cmtLen = dv.getUint16(p + 32, true);
+    out.push({
+      method: dv.getUint16(p + 10, true), csize: dv.getUint32(p + 20, true), local: dv.getUint32(p + 42, true),
+      name: new TextDecoder().decode(new Uint8Array(buf, p + 46, nameLen)),
+    });
+    p += 46 + nameLen + extraLen + cmtLen;
+  }
+  return out;
+}
+async function unzipEntry(buf, e) {
+  const dv = new DataView(buf);
+  const start = e.local + 30 + dv.getUint16(e.local + 26, true) + dv.getUint16(e.local + 28, true);
+  const raw = new Uint8Array(buf, start, e.csize);
+  if (e.method === 0) return raw.slice();
+  if (e.method === 8) {
+    if (typeof DecompressionStream === "undefined") throw new Error("This browser can't unzip — extract the file first");
+    const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  throw new Error("Unsupported zip compression");
+}
+const extOf = (n) => (n.match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
+
+async function hashId(bytes) {
+  try {
+    const h = await crypto.subtle.digest("SHA-1", bytes);
+    return [...new Uint8Array(h)].slice(0, 10).map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch { // crypto.subtle needs https; fall back to FNV-1a
+    let h = 0x811c9dc5;
+    for (let i = 0; i < bytes.length; i++) { h ^= bytes[i]; h = Math.imul(h, 16777619); }
+    return "f" + (h >>> 0).toString(16) + bytes.length.toString(16);
+  }
+}
+
+function cleanName(n) {
+  return n.replace(/^.*[\\/]/, "").replace(/\.[a-z0-9]{1,4}$/i, "").replace(/[_]+/g, " ").trim() || "Untitled";
+}
+
+async function importFile(file) {
+  const buf = await file.arrayBuffer();
+  let name = file.name, data = new Uint8Array(buf), ext = extOf(name), system = null;
+
+  if (data[0] === 0x50 && data[1] === 0x4b && data[2] === 3) {          // zip
+    const entries = zipEntries(buf).filter((e) => !e.name.endsWith("/"));
+    const nes = entries.find((e) => extOf(e.name) === "nes");
+    if (nes) { data = await unzipEntry(buf, nes); name = nes.name; ext = "nes"; system = "nes"; }
+    else {
+      // keep the zip whole (the emulator unzips it itself — needed for .cue + .bin sets)
+      const known = entries.map((e) => EXT2SYS[extOf(e.name)]).find(Boolean)
+        || (entries.some((e) => /\.(bin|iso|img)$/i.test(e.name)) && entries.some((e) => extOf(e.name) === "cue") ? "psx" : null);
+      if (known) { system = known; ext = "zip"; }
+      else if (entries.length === 1) {
+        const inner = await unzipEntry(buf, entries[0]);
+        system = sniff(inner); if (system) { data = inner; name = entries[0].name; ext = extOf(name) || "bin"; }
+      }
+      if (!system) system = await pickSystem(file.name);
+      if (!system) return null;
+    }
+  } else {
+    system = EXT2SYS[ext] || sniff(data);
+    if (!system) system = await pickSystem(file.name);
+    if (!system) return null;
+    if (!ext || (!EXT2SYS[ext] && system !== "psx")) ext = SYSTEMS[system].exts[0];
+  }
+  if (system === "nes" && !(data[0] === 0x4e && data[1] === 0x45 && data[2] === 0x53 && data[3] === 0x1a))
+    throw new Error(`"${file.name}" isn't a valid NES ROM`);
+  if (system === "psx" && ext === "cue") throw new Error(`"${file.name}" is only the .cue — zip it together with its .bin file(s), or use a .chd / .pbp`);
+
+  const id = await hashId(data);
+  const existing = await DB.get("roms", id);
+  await DB.put("roms", {
+    id, system, ext, name: existing ? existing.name : cleanName(name), size: data.length,
+    added: existing ? existing.added : Date.now(), played: existing ? existing.played : 0, data,
+  });
+  return id;
+}
+
+/* ---------------- Library UI ---------------- */
+function esc(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function ago(t) {
+  if (!t) return "Never played";
+  const m = (Date.now() - t) / 60000;
+  if (m < 1) return "Played just now";
+  if (m < 60) return `Played ${Math.round(m)} min ago`;
+  if (m < 1440) return `Played ${Math.round(m / 60)} h ago`;
+  return `Played ${Math.round(m / 1440)} d ago`;
+}
+let filter = "all";
+$("chips").addEventListener("click", (e) => { const c = e.target.closest("[data-f]"); if (c) { filter = c.dataset.f; renderLibrary(); } });
+async function renderLibrary() {
+  let roms = (await DB.all("roms")).sort((a, b) => (b.played || b.added) - (a.played || a.added));
+  roms.forEach((r) => { if (!r.system) r.system = "nes"; });             // games added before multi-system
+  const present = [...new Set(roms.map((r) => r.system))];
+  if (filter !== "all" && !present.includes(filter)) filter = "all";
+  $("chips").innerHTML = present.length > 1
+    ? [`<button class="chip${filter === "all" ? " on" : ""}" data-f="all">All</button>`,
+       ...Object.keys(SYSTEMS).filter((k) => present.includes(k))
+         .map((k) => `<button class="chip${filter === k ? " on" : ""}" data-f="${k}">${SYSTEMS[k].name}</button>`)].join("")
+    : "";
+  if (filter !== "all") roms = roms.filter((r) => r.system === filter);
+  $("count").textContent = roms.length ? `${roms.length} game${roms.length > 1 ? "s" : ""}` : "";
+  const el = $("roms");
+  if (!roms.length) {
+    el.innerHTML = `<div class="empty">No games yet. Tap <b>Add ROM from phone</b> and choose a game file from your Downloads.</div>`;
+    return;
+  }
+  el.innerHTML = roms.map((r) => `
+    <div class="rom">
+      <button class="rom-play" data-id="${r.id}">
+        <div class="rom-ico" style="background:${SYSTEMS[r.system].color}">${SYSTEMS[r.system].tag}</div>
+        <div style="min-width:0"><div class="rom-name">${esc(r.name)}</div>
+        <div class="rom-meta">${SYSTEMS[r.system].name} · ${ago(r.played)} · ${r.size > 2 ** 20 ? (r.size / 2 ** 20).toFixed(1) + " MB" : Math.round(r.size / 1024) + " KB"}</div></div>
+      </button>
+      <button class="rom-del" data-del="${r.id}" aria-label="Delete">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+      </button>
+    </div>`).join("");
+}
+$("roms").addEventListener("click", async (e) => {
+  const play = e.target.closest("[data-id]"), del = e.target.closest("[data-del]");
+  if (play) startGame(play.dataset.id);
+  if (del) {
+    const r = await DB.get("roms", del.dataset.del);
+    if (r && await ask(`Delete "${r.name}" and its saves?`, "Delete", "Cancel")) {
+      await DB.del("roms", r.id);
+      await DB.delPrefix("kv", `sram:${r.id}`);
+      await DB.delPrefix("kv", `state:${r.id}:`);
+      renderLibrary();
+    }
+  }
+});
+$("addBtn").onclick = () => $("fileIn").click();
+$("fileIn").onchange = async (e) => {
+  const files = [...e.target.files];
+  e.target.value = "";
+  let lastId = null, errors = [];
+  if (files.some((f) => f.size > 40 * 2 ** 20)) toast("Importing… big games take a moment");
+  for (const f of files) {
+    try { lastId = await importFile(f); } catch (err) { errors.push(err.message || String(err)); }
+  }
+  await renderLibrary();
+  if (errors.length) ask(errors.join("\n"));
+  else if (files.length === 1 && lastId) startGame(lastId);
+};
+
+/* ---------------- Emulator core + video ---------------- */
+const canvas = $("screen"), ctx = canvas.getContext("2d", { alpha: false });
+const image = ctx.createImageData(256, 240);
+const buf32 = new Uint32Array(image.data.buffer);
+let nes = null, current = null, running = false, paused = false;
+let fastForward = false, sramDirty = false, sramTimer = 0;
+
+/* audio: ring buffer drained by a ScriptProcessor */
+let actx = null, node = null;
+const AB = 8192, aL = new Float32Array(AB), aR = new Float32Array(AB);
+let aW = 0, aRd = 0;
+function audioInit() {
+  if (actx) { if (actx.state === "suspended") actx.resume(); return; }
+  try {
+    actx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+    node = actx.createScriptProcessor(1024, 0, 2);
+    node.onaudioprocess = (ev) => {
+      const L = ev.outputBuffer.getChannelData(0), R = ev.outputBuffer.getChannelData(1);
+      const avail = (aW - aRd + AB) % AB;
+      if (avail < L.length) { L.fill(0); R.fill(0); return; }   // underrun: silence
+      for (let i = 0; i < L.length; i++) { L[i] = aL[aRd]; R[i] = aR[aRd]; aRd = (aRd + 1) % AB; }
+    };
+    node.connect(actx.destination);
+  } catch { actx = null; }
+}
+function onSample(l, r) {
+  if (settings.muted || fastForward) return;
+  const next = (aW + 1) % AB;
+  if (next === aRd) return; // buffer full, drop
+  aL[aW] = l; aR[aW] = r; aW = next;
+}
+function onFrame(fb) {
+  for (let i = 0; i < 61440; i++) buf32[i] = 0xff000000 | fb[i];
+}
+
+function makeNES() {
+  return new jsnes.NES({
+    onFrame, onAudioSample: onSample,
+    sampleRate: actx ? actx.sampleRate : 48000,
+    onBatteryRamWrite: () => { sramDirty = true; },
+  });
+}
+
+/* ---------------- Main loop ---------------- */
+let last = 0, acc = 0;
+function loop(t) {
+  if (!running) return;
+  requestAnimationFrame(loop);
+  if (paused) { last = t; return; }
+  if (!last) last = t;
+  acc += Math.min(t - last, 100);   // clamp after tab switches
+  last = t;
+  const step = 1000 / FPS;
+  let n = 0;
+  if (fastForward) n = 4, acc = 0;
+  else {
+    // keep audio from drifting: skip/add a frame when the buffer is too full/empty
+    while (acc >= step && n < 4) { acc -= step; n++; }
+    if (actx && !settings.muted) {
+      const buffered = (aW - aRd + AB) % AB;
+      if (buffered > actx.sampleRate * 0.12 && n > 0) n--;
+      else if (buffered < actx.sampleRate * 0.03 && n < 4) n++;
+    }
+  }
+  try {
+    for (let i = 0; i < n; i++) { applyTurbo(); nes.frame(); }
+  } catch (err) {
+    console.error(err); toast("Emulation error — try Reset"); paused = true;
+  }
+  if (n) ctx.putImageData(image, 0, 0);
+  if (sramDirty && !sramTimer) sramTimer = setTimeout(saveSRAM, 1500);
+}
+
+async function saveSRAM() {
+  sramTimer = 0;
+  if (!nes || !current || !sramDirty) return;
+  sramDirty = false;
+  await DB.put("kv", nes.cpu.mem.slice(0x6000, 0x8000), `sram:${current.id}`);
+}
+
+async function startGame(id) {
+  const rom = await DB.get("roms", id);
+  if (!rom) return;
+  if (rom.system && rom.system !== "nes") return startOther(rom);
+  audioInit();                      // user gesture → audio can start
+  nes = makeNES();
+  try {
+    let bin = ""; // jsnes takes a binary string
+    for (let i = 0; i < rom.data.length; i += 0x8000)
+      bin += String.fromCharCode.apply(null, rom.data.subarray(i, i + 0x8000));
+    nes.loadROM(bin);
+  } catch (err) {
+    ask("This ROM couldn't be loaded: " + (err.message || err) + "\n(Some rarer cartridge types aren't supported.)");
+    nes = null; return;
+  }
+  current = rom;
+  const sram = await DB.get("kv", `sram:${id}`);
+  if (sram && sram.length === 0x2000) nes.cpu.mem.set(sram, 0x6000);
+  rom.played = Date.now(); DB.put("roms", rom);
+  $("gameTitle").textContent = rom.name;
+  $("library").classList.add("hidden");
+  $("player").classList.remove("hidden");
+  history.pushState({ playing: true }, "");
+  aW = aRd = 0; acc = 0; last = 0; paused = false; running = true;
+  layout();
+  requestAnimationFrame(loop);
+  try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch {}
+}
+
+async function stopGame() {
+  if (!running) return;
+  running = false;
+  releaseAll();
+  await saveSRAM();
+  nes = null; current = null;
+  $("player").classList.add("hidden");
+  $("library").classList.remove("hidden");
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  renderLibrary();
+}
+$("backBtn").onclick = () => history.back();
+
+/* ---------------- Other systems: EmulatorJS in a same-origin frame ---------------- */
+let ejsActive = false, ejsExitResolve = null;
+function startOther(rom) {
+  ejsActive = true;
+  rom.played = Date.now(); DB.put("roms", rom);
+  const el = $("ejsPlayer");
+  $("ejsLoading").textContent = `Starting ${SYSTEMS[rom.system].name}…`;
+  $("ejsLoading").style.display = "";
+  const f = document.createElement("iframe");
+  f.id = "ejsFrame";
+  f.allow = "autoplay; fullscreen; gamepad";
+  f.src = "play.html" + (settings.touch === "on" ? "?touch=on" : padsList().length || settings.touch === "off" ? "?pad=1" : "") + "#" + encodeURIComponent(rom.id);
+  el.appendChild(f);
+  $("library").classList.add("hidden");
+  el.classList.remove("hidden");
+  history.pushState({ playing: true }, "");
+  f.addEventListener("load", () => { try { f.contentWindow.focus(); } catch {} });
+}
+async function stopOther() {
+  if (!ejsActive) return;
+  const f = $("ejsFrame");
+  if (f && f.contentWindow) {
+    await new Promise((res) => {                     // let the game flush its save file first
+      ejsExitResolve = res;
+      try { f.contentWindow.postMessage({ cartridge: true, type: "exit" }, location.origin); } catch { res(); }
+      setTimeout(res, 1500);
+    });
+  }
+  ejsExitResolve = null; ejsActive = false;
+  if (f) f.remove();
+  $("ejsPlayer").classList.add("hidden");
+  $("library").classList.remove("hidden");
+  gpSuppress = true;
+  renderLibrary();
+}
+window.addEventListener("message", (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.cartridge !== true) return;
+  if (e.data.type === "exited" && ejsExitResolve) ejsExitResolve();
+  if (e.data.type === "started") $("ejsLoading").style.display = "none";
+  if (e.data.type === "ready") $("ejsLoading").style.display = "none";
+  if (e.data.type === "error") { $("ejsLoading").style.display = "none"; }
+});
+$("ejsBack").onclick = () => history.back();
+
+/* fetch every core once so the service worker keeps them for offline play */
+$("offlineBtn").onclick = async () => {
+  if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) {
+    $("offlineS").textContent = "Install the app from your own HTTPS site first — offline storage isn't available here.";
+    return;
+  }
+  const files = CORE_FILES.flatMap((c) => [`ejs/cores/${c}-wasm.data`, `ejs/cores/reports/${c}.json`]);
+  let done = 0, failed = 0;
+  for (const f of files) {
+    try { const r = await fetch(f); if (!r.ok) failed++; await r.arrayBuffer(); } catch { failed++; }
+    $("offlineS").textContent = `Downloading… ${++done}/${files.length}`;
+  }
+  $("offlineS").textContent = failed ? `${failed} file(s) failed — try again on Wi-Fi` : "All systems ready offline ✓";
+};
+window.addEventListener("popstate", () => {
+  if (ejsActive) { stopOther(); return; }
+  if (!$("mapSheet").classList.contains("hidden")) { closeMap(); history.pushState({ playing: true }, ""); return; }
+  if (!$("sheet").classList.contains("hidden")) { closeMenu(); history.pushState({ playing: true }, ""); return; }
+  stopGame();
+});
+
+/* ---------------- Screen sizing ---------------- */
+function layout() {
+  const w = $("screenWrap");
+  const r = w.getBoundingClientRect();
+  const s = Math.min(r.width / 256, r.height / 240);
+  // whole-number scaling when it fits well, otherwise smooth fill
+  const scale = s >= 2 && (s % 1) < 0.25 ? Math.floor(s) : s;
+  canvas.style.width = Math.floor(256 * scale) + "px";
+  canvas.style.height = Math.floor(240 * scale) + "px";
+}
+window.addEventListener("resize", () => running && layout());
+
+/* ---------------- Input ---------------- */
+const MAP = { up: C.BUTTON_UP, down: C.BUTTON_DOWN, left: C.BUTTON_LEFT, right: C.BUTTON_RIGHT,
+  A: C.BUTTON_A, B: C.BUTTON_B, SELECT: C.BUTTON_SELECT, START: C.BUTTON_START };
+const held = new Map();          // "player:button" -> set of sources
+const turbo = { 1: { A: false, B: false }, 2: { A: false, B: false } };
+let turboTick = 0;
+
+function press(name, src, pl = 1) {
+  if (!nes) return;
+  if (name === "TA" || name === "TB") { turbo[pl][name[1]] = true; return; }
+  const key = pl + ":" + name;
+  let s = held.get(key);
+  if (!s) held.set(key, (s = new Set()));
+  if (!s.size) nes.buttonDown(pl, MAP[name]);
+  s.add(src);
+}
+function release(name, src, pl = 1) {
+  if (name === "TA" || name === "TB") {
+    const b = name[1];
+    turbo[pl][b] = false;
+    if (!held.get(pl + ":" + b)?.size && nes) nes.buttonUp(pl, MAP[b]);
+    return;
+  }
+  const s = held.get(pl + ":" + name);
+  if (!s || !s.has(src)) return;
+  s.delete(src);
+  if (!s.size && nes) nes.buttonUp(pl, MAP[name]);
+}
+function releaseAll() {
+  for (const [key, s] of held) {
+    const [pl, name] = key.split(":");
+    if (s.size && nes) nes.buttonUp(+pl, MAP[name]);
+    s.clear();
+  }
+  for (const pl of [1, 2]) for (const b of ["A", "B"]) {
+    if (turbo[pl][b] && nes) nes.buttonUp(pl, MAP[b]);
+    turbo[pl][b] = false;
+  }
+  gpPrev.clear(); gpSuppress = true;     // ignore buttons still held until released
+  document.querySelectorAll("#pad .on").forEach((el) => el.classList.remove("on"));
+}
+function applyTurbo() {
+  turboTick = (turboTick + 1) % 4;
+  const on = turboTick < 2;
+  for (const pl of [1, 2]) for (const b of ["A", "B"]) {
+    if (!turbo[pl][b] || held.get(pl + ":" + b)?.size) continue;
+    on ? nes.buttonDown(pl, MAP[b]) : nes.buttonUp(pl, MAP[b]);
+  }
+}
+function buzz() { if (settings.vib && navigator.vibrate) navigator.vibrate(12); }
+
+/* touch: each pointer tracks which controls it is over, so you can slide between buttons */
+const pad = $("pad"), dpadEl = $("dpad");
+const pointers = new Map();     // pointerId -> Set of names
+const btnEls = {};
+pad.querySelectorAll("[data-b]").forEach((el) => (btnEls[el.dataset.b] = el));
+const dirEls = {};
+dpadEl.querySelectorAll("[data-d]").forEach((el) => (dirEls[el.dataset.d] = el));
+
+function namesAt(x, y) {
+  const out = new Set();
+  // D-pad: angle-based with diagonals, generous hit area
+  const r = dpadEl.getBoundingClientRect();
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const dx = x - cx, dy = y - cy, dist = Math.hypot(dx, dy);
+  if (dist < r.width * 0.75 && dist > r.width * 0.08) {
+    const a = Math.atan2(dy, dx) * 180 / Math.PI; // 0 = right, 90 = down
+    if (a > -67.5 && a < 67.5) out.add("right");
+    if (a > 22.5 && a < 157.5) out.add("down");
+    if (a > 112.5 || a < -112.5) out.add("left");
+    if (a > -157.5 && a < -22.5) out.add("up");
+    return out;
+  }
+  // round buttons: nearest within radius (slightly enlarged)
+  let best = null, bestD = Infinity;
+  for (const [name, el] of Object.entries(btnEls)) {
+    if (el.offsetParent === null) continue;
+    const b = el.getBoundingClientRect();
+    const bx = b.left + b.width / 2, by = b.top + b.height / 2;
+    const d = Math.hypot(x - bx, y - by), lim = Math.max(b.width, b.height) * 0.72;
+    if (d < lim && d < bestD) { best = name; bestD = d; }
+  }
+  // between A and B → press both (common for running + jumping)
+  if (best === "A" || best === "B") {
+    const a = btnEls.A.getBoundingClientRect(), b = btnEls.B.getBoundingClientRect();
+    const mx = (a.left + a.right + b.left + b.right) / 4, my = (a.top + a.bottom + b.top + b.bottom) / 4;
+    if (Math.hypot(x - mx, y - my) < a.width * 0.32) { out.add("A"); out.add("B"); return out; }
+  }
+  if (best) out.add(best);
+  return out;
+}
+function setPointer(id, names) {
+  const prev = pointers.get(id) || new Set();
+  let changed = false;
+  for (const n of prev) if (!names.has(n)) { releaseVisual(n, id); changed = true; }
+  for (const n of names) if (!prev.has(n)) { pressVisual(n, id); changed = true; }
+  if (changed && names.size && [...names].some((n) => !prev.has(n))) buzz();
+  if (names.size) pointers.set(id, names); else pointers.delete(id);
+}
+function pressVisual(n, src) { press(n, src); (btnEls[n] || dirEls[n])?.classList.add("on"); }
+function releaseVisual(n, src) {
+  release(n, src);
+  const stillHeld = [...pointers.entries()].some(([pid, s]) => pid !== src && s.has(n));
+  if (!stillHeld) (btnEls[n] || dirEls[n])?.classList.remove("on");
+}
+pad.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  e.preventDefault();
+  try { pad.setPointerCapture(e.pointerId); } catch {}
+  setPointer(e.pointerId, namesAt(e.clientX, e.clientY));
+});
+pad.addEventListener("pointermove", (e) => {
+  if (!pointers.has(e.pointerId) && !(e.buttons || e.pointerType === "touch")) return;
+  setPointer(e.pointerId, namesAt(e.clientX, e.clientY));
+});
+const end = (e) => setPointer(e.pointerId, new Set());
+pad.addEventListener("pointerup", end);
+pad.addEventListener("pointercancel", end);
+pad.addEventListener("contextmenu", (e) => e.preventDefault());
+
+/* keyboard */
+const KEYS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+  KeyW: "up", KeyS: "down", KeyA: "left", KeyD: "right",
+  KeyX: "A", KeyK: "A", KeyZ: "B", KeyJ: "B", Enter: "START", ShiftRight: "SELECT", Backspace: "SELECT" };
+window.addEventListener("keydown", (e) => {
+  if (!running || !$("sheet").classList.contains("hidden")) return;
+  if (e.code === "Escape") { openMenu(); return; }
+  if (e.code === "Space") { fastForward = true; $("ffBtn").classList.add("on"); e.preventDefault(); return; }
+  const n = KEYS[e.code];
+  if (n) { e.preventDefault(); if (!e.repeat) press(n, "k:" + e.code); }
+});
+window.addEventListener("keyup", (e) => {
+  if (e.code === "Space") { fastForward = false; $("ffBtn").classList.remove("on"); return; }
+  const n = KEYS[e.code];
+  if (n) release(n, "k:" + e.code);
+});
+
+/* ---------------- Controllers (Gamepad API) ----------------
+   First controller = Player 1, second = Player 2.
+   In the library and menus the controller drives the UI: D-pad moves, A selects, B goes back. */
+const gpPrev = new Map();         // pad index -> {key: name}
+const gpPlayer = new Map();       // pad index -> 1 | 2
+let gpSuppress = false, gpUsed = false, gpListen = null;
+let navRepeat = { dir: null, t: 0 };
+
+function padsList() { return navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; }
+function assignPlayers() {
+  gpPlayer.clear();
+  padsList().sort((a, b) => a.index - b.index).forEach((gp, i) => gpPlayer.set(gp.index, i === 0 ? 1 : 2));
+}
+/* Backbone One (and similar clip-on phone controllers) report as USB gamepads, vendor id 358a */
+const isBackbone = (gp) => /backbone|358a/i.test(gp.id || "");
+function padName(gp) {
+  if (isBackbone(gp)) return "Backbone One"; return (gp.id || "Controller").replace(/\s*\(.*?\)\s*/g, " ").replace(/Vendor:.*$/i, "").trim() || "Controller"; }
+function updateGpBanner() {
+  const pads = padsList();
+  $("gpBanner").classList.add("show");
+  $("gpBanner").classList.toggle("idle", !pads.length);
+  if (!pads.length) $("gpText").textContent = "Using a Backbone or other controller? Press any button on it so your browser can see it.";
+  else $("gpText").textContent = pads.length > 1
+    ? `${pads.length} controllers connected — Player 1 & 2 ready. D-pad + A to pick a game.`
+    : `${padName(pads[0])} connected — use the D-pad and A to pick a game.`;
+}
+window.addEventListener("gamepadconnected", (e) => {
+  assignPlayers(); updateGpBanner();
+  const gp = e.gamepad, pl = gpPlayer.get(gp.index) || 1;
+  toast(`${isBackbone(gp) ? "Backbone One" : "Controller"} connected · Player ${pl}`);
+  if (isBackbone(gp) || running) setGpMode(true);          // clip-on controller: hide touch buttons right away
+  if (gp.mapping !== "standard")
+    setTimeout(() => toast("Unusual button layout — check Menu → Controller buttons"), 1800);
+});
+window.addEventListener("gamepaddisconnected", (e) => {
+  const prev = gpPrev.get(e.gamepad.index) || {}, pl = gpPlayer.get(e.gamepad.index) || 1;
+  for (const k in prev) release(prev[k], `g${e.gamepad.index}:${k}`, pl);
+  gpPrev.delete(e.gamepad.index);
+  assignPlayers(); updateGpBanner();
+  if (!padsList().length) setGpMode(false);
+  toast("Controller disconnected");
+});
+
+function setGpMode(on) {
+  gpUsed = on;
+  $("player").classList.toggle("gpmode", settings.touch === "off" || (settings.touch === "auto" && on));
+  if (running) requestAnimationFrame(layout);
+}
+// touching the screen brings the on-screen controls back
+$("player").addEventListener("pointerdown", (e) => { if (e.pointerType === "touch" && gpUsed) setGpMode(false); }, true);
+
+function readPad(gp) {
+  const m = settings.gpMap, now = {};
+  for (const name in m) if (gp.buttons[m[name]]?.pressed) now["b" + m[name] + name] = name;
+  const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
+  if (ax < -0.5) now.axL = "left"; if (ax > 0.5) now.axR = "right";
+  if (ay < -0.5) now.axU = "up"; if (ay > 0.5) now.axD = "down";
+  return now;
+}
+
+function pollGamepads() {
+  const pads = padsList();
+  if (!pads.length) return;
+  if (gpListen) return listenForButton(pads);
+  if (ejsActive) { gpSuppress = true; return; }                 // EmulatorJS reads the controllers itself
+  const uiActive = !running || !$("sheet").classList.contains("hidden") ||
+    !$("mapSheet").classList.contains("hidden") || !$("dlg").classList.contains("hidden");
+  let anyDown = false;
+  for (const gp of pads) {
+    if (!gpPlayer.has(gp.index)) assignPlayers();
+    const pl = gpPlayer.get(gp.index) || 1;
+    const prev = gpPrev.get(gp.index) || {};
+    const now = readPad(gp);
+    const sys = { home: gp.buttons[16]?.pressed, ff: gp.buttons[5]?.pressed };
+    if (Object.keys(now).length || sys.home || sys.ff) anyDown = true;
+    if (gpSuppress) { gpPrev.set(gp.index, { ...now, _home: sys.home, _ff: sys.ff }); continue; }
+
+    if (uiActive) {
+      navPad(gp, now, prev, sys);
+    } else {
+      for (const k in now) if (k[0] !== "_" && !prev[k]) press(now[k], `g${gp.index}:${k}`, pl);
+      for (const k in prev) if (k[0] !== "_" && !now[k]) release(prev[k], `g${gp.index}:${k}`, pl);
+      const vals = Object.values(now);
+      const combo = vals.includes("SELECT") && vals.includes("START");
+      if ((sys.home && !prev._home) || (combo && !prev._combo)) { openMenu(); now._combo = combo; gpPrev.set(gp.index, now); return; }
+      now._combo = combo;
+      if (pl === 1 && sys.ff !== !!prev._ff) { fastForward = !!sys.ff; $("ffBtn").classList.toggle("on", fastForward); }
+      if (Object.keys(now).some((k) => k[0] !== "_")) setGpMode(true);
+    }
+    now._home = sys.home; now._ff = sys.ff;
+    gpPrev.set(gp.index, now);
+  }
+  if (gpSuppress && !anyDown) gpSuppress = false;
+}
+
+/* --- driving the interface with a controller --- */
+function navTargets() {
+  const layer = !$("dlg").classList.contains("hidden") ? $("dlg")
+    : !$("mapSheet").classList.contains("hidden") ? $("mapSheet")
+    : !$("sheet").classList.contains("hidden") ? $("sheet")
+    : $("library");
+  return [...layer.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null && !b.classList.contains("rom-del"));
+}
+function navMove(dir) {
+  const list = navTargets();
+  if (!list.length) return;
+  let cur = list.indexOf(document.querySelector(".gpfocus"));
+  if (cur < 0) cur = dir > 0 ? -1 : 0;
+  const next = list[(cur + dir + list.length) % list.length];
+  document.querySelectorAll(".gpfocus").forEach((el) => el.classList.remove("gpfocus"));
+  next.classList.add("gpfocus");
+  next.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+function navPad(gp, now, prev, sys) {
+  const vals = new Set(Object.values(now)), was = new Set(Object.values(prev));
+  const edge = (n) => vals.has(n) && !was.has(n);
+  const dir = vals.has("down") || vals.has("right") ? 1 : vals.has("up") || vals.has("left") ? -1 : 0;
+  const t = performance.now();
+  if (dir && (dir !== navRepeat.dir || t > navRepeat.t)) {
+    navMove(dir);
+    navRepeat = { dir, t: t + (dir !== navRepeat.dir ? 380 : 120) };
+  }
+  if (!dir) navRepeat.dir = null;
+  if (edge("A") || edge("START")) {
+    let f = document.querySelector(".gpfocus");
+    if (!f || !navTargets().includes(f)) { navMove(1); f = document.querySelector(".gpfocus"); }
+    if (f) { f.classList.remove("gpfocus"); f.click(); }
+  }
+  if (edge("B") || (sys.home && !prev._home)) navBack();
+}
+function navBack() {
+  if (!$("dlg").classList.contains("hidden")) $("dlgNo").classList.contains("hidden") ? $("dlgOk").click() : $("dlgNo").click();
+  else if (!$("mapSheet").classList.contains("hidden")) closeMap();
+  else if (!$("sheet").classList.contains("hidden")) closeMenu();
+}
+
+/* --- remapping --- */
+const MAP_LABELS = [["A", "A"], ["B", "B"], ["TA", "Turbo A"], ["TB", "Turbo B"], ["START", "Start"], ["SELECT", "Select"],
+  ["up", "Up"], ["down", "Down"], ["left", "Left"], ["right", "Right"]];
+const BTN_NAMES = ["Bottom (A / ✕)", "Right (B / ○)", "Left (X / □)", "Top (Y / △)", "L1", "R1", "L2", "R2", "Select / View",
+  "Start / Menu", "L-stick press", "R-stick press", "D-pad up", "D-pad down", "D-pad left", "D-pad right", "Home"];
+function btnLabel(i) { return i == null ? "—" : BTN_NAMES[i] || "Button " + i; }
+function renderMap() {
+  $("mapRows").innerHTML = MAP_LABELS.map(([k, label]) =>
+    `<button class="maprow${gpListen === k ? " listen" : ""}" data-map="${k}"><b>${label}</b><span>${gpListen === k ? "Press a button…" : btnLabel(settings.gpMap[k])}</span></button>`).join("");
+}
+function openMap() {
+  if (!padsList().length) toast("Connect a controller first (Bluetooth or USB)");
+  $("mapSheet").classList.remove("hidden"); renderMap();
+}
+function closeMap() { gpListen = null; $("mapSheet").classList.add("hidden"); gpSuppress = true; }
+$("optPad").onclick = openMap;
+$("mapDone").onclick = closeMap;
+$("mapReset").onclick = () => { settings.gpMap = { ...DEFAULT_MAP }; saveSettings(); renderMap(); toast("Default buttons restored"); };
+$("mapRows").addEventListener("click", (e) => {
+  const r = e.target.closest("[data-map]"); if (!r) return;
+  gpListen = r.dataset.map; gpSuppress = true; renderMap();
+});
+function listenForButton(pads) {
+  let anyDown = false, hit = null;
+  for (const gp of pads) gp.buttons.forEach((b, i) => { if (b.pressed) { anyDown = true; if (hit == null) hit = i; } });
+  if (gpSuppress) { if (!anyDown) gpSuppress = false; return; }   // wait for the A press that chose the row to be released
+  if (hit == null || hit === 16) return;
+  for (const k in settings.gpMap) if (settings.gpMap[k] === hit) delete settings.gpMap[k]; // one job per button
+  settings.gpMap[gpListen] = hit;
+  gpListen = null; gpSuppress = true; saveSettings(); renderMap();
+}
+
+/* one poll loop for menus + gameplay */
+(function gpLoop() { pollGamepads(); requestAnimationFrame(gpLoop); })();
+
+/* ---------------- Top bar ---------------- */
+$("ffBtn").addEventListener("pointerdown", (e) => { e.preventDefault(); fastForward = !fastForward; $("ffBtn").classList.toggle("on", fastForward); });
+function syncMute() {
+  $("muteBtn").classList.toggle("on", settings.muted);
+  $("waves").style.display = settings.muted ? "none" : "";
+}
+$("muteBtn").onclick = () => { settings.muted = !settings.muted; audioInit(); syncMute(); saveSettings(); toast(settings.muted ? "Sound off" : "Sound on"); };
+
+let toastT = 0;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+/* ---------------- Menu / save states ---------------- */
+function openMenu() {
+  if (!running) return;
+  paused = true; releaseAll();
+  $("sheet").classList.remove("hidden");
+  renderSlots();
+}
+function closeMenu() { gpSuppress = true; $("sheet").classList.add("hidden"); paused = false; last = 0; audioInit(); }
+$("menuBtn").onclick = openMenu;
+$("optClose").onclick = closeMenu;
+$("sheet").addEventListener("click", (e) => { if (e.target.id === "sheet") closeMenu(); });
+
+async function renderSlots() {
+  const wrap = $("slots");
+  wrap.innerHTML = "";
+  for (let n = 1; n <= 3; n++) {
+    const st = await DB.get("kv", `state:${current.id}:${n}`);
+    const d = document.createElement("div");
+    d.className = "slot";
+    d.innerHTML = `<canvas width="256" height="240"></canvas>
+      <div>${st ? new Date(st.time).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Slot " + n + " · empty"}</div>
+      <div class="row"><button data-save="${n}">Save</button><button data-load="${n}" ${st ? "" : "disabled"}>Load</button></div>`;
+    if (st && st.thumb) {
+      const c = d.querySelector("canvas").getContext("2d");
+      c.putImageData(new ImageData(new Uint8ClampedArray(st.thumb), 256, 240), 0, 0);
+    }
+    wrap.appendChild(d);
+  }
+}
+$("slots").addEventListener("click", async (e) => {
+  const s = e.target.closest("[data-save]"), l = e.target.closest("[data-load]");
+  if (s) {
+    const n = s.dataset.save;
+    await DB.put("kv", { time: Date.now(), state: JSON.stringify(nes.toJSON()), thumb: image.data.slice().buffer },
+      `state:${current.id}:${n}`);
+    closeMenu(); toast(`Saved to slot ${n}`);
+  }
+  if (l) {
+    const n = l.dataset.load;
+    const st = await DB.get("kv", `state:${current.id}:${n}`);
+    try {
+      nes.fromJSON(JSON.parse(st.state));
+      buf32.set(new Uint32Array(st.thumb)); ctx.putImageData(image, 0, 0);
+      closeMenu(); toast(`Loaded slot ${n}`);
+    } catch (err) { ask("Couldn't load that state: " + err.message); }
+  }
+});
+$("optReset").onclick = () => { nes.reset(); closeMenu(); toast("Reset"); };
+$("optFull").onclick = () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (el.requestFullscreen) el.requestFullscreen({ navigationUI: "hide" }).catch(() => toast("Full screen not available"));
+  closeMenu();
+};
+const TOUCH_MODES = { auto: "Auto (hide with controller)", on: "Always show", off: "Always hide" };
+$("optTouch").onclick = () => {
+  settings.touch = { auto: "on", on: "off", off: "auto" }[settings.touch] || "auto";
+  syncOpts(); saveSettings(); setGpMode(gpUsed);
+};
+function syncOpts() {
+  $("optTouchS").textContent = TOUCH_MODES[settings.touch] || TOUCH_MODES.auto;
+  $("optTurboS").textContent = settings.turbo ? "On" : "Off";
+  $("optVibS").textContent = settings.vib ? "On" : "Off";
+  pad.classList.toggle("noturbo", !settings.turbo);
+}
+$("optTurbo").onclick = () => { settings.turbo = !settings.turbo; syncOpts(); saveSettings(); };
+$("optVib").onclick = () => { settings.vib = !settings.vib; syncOpts(); saveSettings(); };
+function saveSettings() { DB.put("kv", settings, "settings").catch(() => {}); }
+
+/* pause + flush saves when the app goes to the background */
+document.addEventListener("visibilitychange", () => {
+  if (!running) return;
+  if (document.hidden) { releaseAll(); saveSRAM(); if (actx) actx.suspend(); }
+  else if ($("sheet").classList.contains("hidden")) { last = 0; audioInit(); }
+});
+window.addEventListener("pagehide", () => saveSRAM());
+
+/* ---------------- boot ---------------- */
+(async () => {
+  try { const s = await DB.get("kv", "settings"); if (s) Object.assign(settings, s); if (!settings.gpMap) settings.gpMap = { ...DEFAULT_MAP }; } catch {}
+  assignPlayers(); updateGpBanner(); setGpMode(false);
+  syncOpts(); syncMute();
+  renderLibrary();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  if ("serviceWorker" in navigator && location.protocol === "https:")
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+
+window.__cartridge = { get nes() { return nes; }, importFile, startGame, stopGame, DB }; // for testing
+})();
+</script>
+</body>
+</html>
