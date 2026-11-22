@@ -46,6 +46,28 @@ function getRom(id) {
   const core = CORES[rom.system];
   if (!core) return fail("This system isn't supported yet.");
 
+  // Pick the on-screen pad layout explicitly. EmulatorJS otherwise guesses from the core name, and
+  // genesis_plus_gx (Genesis, Master System, Game Gear) is guessed as Master System = 2 buttons.
+  const SCHEMES = { gb: "gb", gbc: "gb", gba: "gba", snes: "snes", genesis: "segaMD", sms: "segaMS", gg: "segaGG",
+    n64: "n64", psx: "psx", a2600: "atari2600", pce: "pce", lynx: "lynx" };
+  window.EJS_controlScheme = SCHEMES[rom.system];
+  if (rom.system === "psx") {
+    // EmulatorJS has no PlayStation pad, and its fallback lacks shoulder buttons.
+    // RetroPad ids: B0 Y1 Select2 Start3 Up4 Down5 Left6 Right7 A8 X9 L10 R11 L2=12 R2=13
+    window.EJS_VirtualGamepadSettings = [
+      { type: "button", text: "△", id: "triangle", location: "right", left: 40, bold: true, input_value: 9 },
+      { type: "button", text: "□", id: "square", location: "right", top: 40, bold: true, input_value: 1 },
+      { type: "button", text: "○", id: "circle", location: "right", left: 81, top: 40, bold: true, input_value: 8 },
+      { type: "button", text: "✕", id: "cross", location: "right", left: 40, top: 80, bold: true, input_value: 0 },
+      { type: "dpad", id: "dpad", location: "left", left: "50%", top: "50%", joystickInput: false, inputValues: [4, 5, 6, 7] },
+      { type: "button", text: "Start", id: "start", location: "center", left: 60, fontSize: 15, block: true, input_value: 3 },
+      { type: "button", text: "Select", id: "select", location: "center", left: -5, fontSize: 15, block: true, input_value: 2 },
+      { type: "button", text: "L1", id: "l1", location: "left", left: 3, top: -100, bold: true, block: true, input_value: 10 },
+      { type: "button", text: "R1", id: "r1", location: "right", right: 3, top: -100, bold: true, block: true, input_value: 11 },
+      { type: "button", text: "L2", id: "l2", location: "left", left: 75, top: -100, bold: true, block: true, input_value: 12 },
+      { type: "button", text: "R2", id: "r2", location: "right", right: 75, top: -100, bold: true, block: true, input_value: 13 },
+    ];
+  }
   window.EJS_player = "#game";
   window.EJS_core = core;
   window.EJS_gameName = rom.id;                                  // saves + states are keyed by this
