@@ -328,7 +328,7 @@ function sniff(d) {
   if (d.length > 0x150 && at(0x104, [0xce, 0xed, 0x66, 0x66])) return (d[0x143] & 0x80) ? "gbc" : "gb";
   if (d.length > 0xc0 && at(0x04, [0x24, 0xff, 0xae, 0x51]) && d[0xb2] === 0x96) return "gba";
   if (at(0, [0x80, 0x37, 0x12, 0x40]) || at(0, [0x37, 0x80, 0x40, 0x12]) || at(0, [0x40, 0x12, 0x37, 0x80])) return "n64";
-  if (str(0x100, "SEGA")) return "genesis";
+  for (let o = 0x100; o <= 0x10c; o++) if (str(o, "SEGA")) return "genesis";   // "SEGA GENESIS", " SEGA MEGA DRIVE"…
   if (str(0, "LYNX")) return "lynx";
   if (str(0, "MComprHD")) return "psx";
   if (str(0x7ff0, "TMR SEGA")) return "sms";
@@ -379,6 +379,19 @@ async function unzipEntry(buf, e) {
   }
   throw new Error("Unsupported zip compression");
 }
+const at7zOrRar = (d) =>
+  d[0] === 0x37 && d[1] === 0x7a && d[2] === 0xbc && d[3] === 0xaf ? "7z" :
+  d[0] === 0x52 && d[1] === 0x61 && d[2] === 0x72 && d[3] === 0x21 ? "rar" : null;
+/* archive names often carry the system: "Sonic (USA) [Genesis].7z", "Game (GBA).7z" */
+function guessFromName(n) {
+  const t = n.toLowerCase();
+  const hints = [["genesis", /genesis|mega ?drive|\bmd\b|\bsmd\b/], ["gba", /\bgba\b|game ?boy advance/], ["gbc", /\bgbc\b|game ?boy colou?r/],
+    ["gb", /\bgb\b|game ?boy/], ["snes", /snes|super nintendo|super famicom|\bsfc\b/], ["n64", /\bn64\b|nintendo 64/],
+    ["psx", /\bps1\b|\bpsx\b|playstation/], ["sms", /master ?system|\bsms\b/], ["gg", /game ?gear|\bgg\b/],
+    ["pce", /turbografx|pc ?engine|\bpce\b/], ["a2600", /2600/], ["lynx", /lynx/]];
+  for (const [k, re] of hints) if (re.test(t)) return k;
+  return null;
+}
 const extOf = (n) => (n.match(/\.([a-z0-9]+)$/i) || [, ""])[1].toLowerCase();
 
 async function hashId(bytes) {
@@ -416,6 +429,12 @@ async function importFile(file) {
       if (!system) system = await pickSystem(file.name);
       if (!system) return null;
     }
+  } else if (at7zOrRar(data)) {
+    // .7z / .rar: the emulator unpacks these itself, so keep the archive as-is
+    ext = at7zOrRar(data);
+    system = guessFromName(name) || await pickSystem(file.name);
+    if (!system) return null;
+    if (system === "nes") throw new Error(`For NES, extract "${file.name}" first and add the .nes file`);
   } else {
     system = EXT2SYS[ext] || sniff(data);
     if (!system) system = await pickSystem(file.name);
