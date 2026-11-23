@@ -260,6 +260,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <div class="big" id="calBig"></div>
     <div class="sub" id="calSub"></div>
     <div class="prog"><i id="calProg"></i></div>
+    <div class="sub" id="calRaw" style="font:11px ui-monospace,monospace;opacity:.75;min-height:30px;margin-bottom:10px;word-break:break-all"></div>
     <div class="opts">
       <button class="opt" id="calSkip" style="text-align:center">Skip this one</button>
       <button class="opt" id="calCancel" style="text-align:center">Cancel</button>
@@ -325,7 +326,8 @@ const DB = (() => {
   };
 })();
 
-const DEFAULT_MAP = { A: 0, B: 2, TA: 1, TB: 3, SELECT: 8, START: 9, up: 12, down: 13, left: 14, right: 15 };
+const DEFAULT_MAP = { A: 1, B: 0, TA: 3, TB: 2, SELECT: 8, START: 9, up: 12, down: 13, left: 14, right: 15 };
+const OLD_DEFAULT_MAP = { A: 0, B: 2, TA: 1, TB: 3, SELECT: 8, START: 9, up: 12, down: 13, left: 14, right: 15 };
 const SYSTEMS = {
   nes:     { name: "NES",                 tag: "NES",  color: "#ff4d5e", exts: ["nes"] },
   gb:      { name: "Game Boy",            tag: "GB",   color: "#b7f05a", exts: ["gb"] },
@@ -1010,7 +1012,7 @@ function updateGpBanner() {
   $("gpBanner").classList.add("show");
   $("gpBanner").classList.toggle("idle", !pads.length);
   $("gpSetup").classList.toggle("hidden", !pads.length);
-  const needs = pads.find((g) => g.mapping !== "standard" && !(settings.gpCal && settings.gpCal[g.id]));
+  const needs = pads.find((g) => g.mapping !== "standard" && !(settings.gpCal && settings.gpCal[g.id]) && !CartridgePad?.profile(g));
   if (!pads.length) $("gpText").textContent = "Using a Backbone or other controller? Press any button on it so your browser can see it.";
   else if (needs) $("gpText").textContent = `${padName(needs)} connected. Its buttons may be in an unusual order — tap Set up buttons once.`;
   else $("gpText").textContent = pads.length > 1
@@ -1022,7 +1024,9 @@ window.addEventListener("gamepadconnected", (e) => {
   const gp = e.gamepad, pl = gpPlayer.get(gp.index) || 1;
   toast(`${isBackbone(gp) ? "Backbone One" : "Controller"} connected · Player ${pl}`);
   if (isBackbone(gp) || running) setGpMode(true);          // clip-on controller: hide touch buttons right away
-  if (gp.mapping !== "standard" && !(settings.gpCal && settings.gpCal[gp.id]))
+  const builtIn = window.CartridgePad && CartridgePad.profile(CartridgePad.raw()[gp.index]);
+  if (builtIn && !(settings.gpCal && settings.gpCal[gp.id])) setTimeout(() => toast(`${builtIn.name} buttons set up automatically`), 1800);
+  else if (gp.mapping !== "standard" && !(settings.gpCal && settings.gpCal[gp.id]))
     setTimeout(() => toast("Buttons acting up? Tap “Set up buttons” in the library"), 1800);
 });
 window.addEventListener("gamepaddisconnected", (e) => {
@@ -1165,8 +1169,8 @@ const CAL_STEPS = [
   [0, "✕  /  A", "Bottom face button"], [1, "○  /  B", "Right face button"], [2, "□  /  X", "Left face button"],
   [3, "△  /  Y", "Top face button"], [4, "L1", "Left bumper"], [5, "R1", "Right bumper"],
   [6, "L2", "Left trigger"], [7, "R2", "Right trigger"],
-  [8, "Select", "Create / View — or any spare button you want as Select"],
-  [9, "Start", "Options / Menu ☰ — or any spare button you want as Start"],
+  [8, "Select  ⋯", "The three-dots button (left) — or any spare button you want as Select"],
+  [9, "Start  ☰", "The three-lines button (right) — or any spare button you want as Start"],
   [12, "D-pad ▲", "Up"], [13, "D-pad ▼", "Down"], [14, "D-pad ◀", "Left"], [15, "D-pad ▶", "Right"],
 ];
 let calState = null;
@@ -1175,7 +1179,7 @@ function startCal() {
   const pads = rawPads();
   if (!pads.length) { toast("Press any button on your controller first"); return; }
   const gp = pads.find((p) => p.buttons.some((b) => b.pressed)) || pads[0];
-  calState = { id: gp.id, idx: gp.index, map: {}, used: new Set(), step: 0, base: [...gp.axes], waitRelease: true };
+  calState = { id: gp.id, idx: gp.index, map: {}, used: new Set(), step: 0, base: [...gp.axes], waitRelease: true, hats: new Set() };
   $("calHead").textContent = `Set up ${padName(gp)}`;
   $("calReset").classList.toggle("hidden", !(settings.gpCal && settings.gpCal[gp.id]));
   $("calSheet").classList.remove("hidden");
@@ -1190,6 +1194,11 @@ function renderCal() {
 function endCal(save) {
   if (running && $("sheet").classList.contains("hidden")) { paused = false; last = 0; }
   if (save && calState) {
+    // sticks: left on axes 0/1; right on the next two axes that rest at 0 and aren't triggers or the hat
+    const usedAxes = new Set(Object.values(calState.map).filter((m) => m.t !== "b").map((m) => m.i));
+    const right = calState.base.map((v, i) => i).filter((i) => i > 1 && !usedAxes.has(i) && Math.abs(calState.base[i]) < 0.3);
+    calState.map._axes = [0, 1, right[0] ?? null, right[1] ?? null];
+    calState.map._v = 2;
     settings.gpCal = { ...(settings.gpCal || {}), [calState.id]: calState.map };
     if (window.CartridgePad) CartridgePad.set(settings.gpCal);
     saveSettings();
@@ -1206,12 +1215,21 @@ function nextCal() {
 function pollCal() {
   const gp = (window.CartridgePad ? CartridgePad.raw() : navigator.getGamepads())[calState.idx];
   if (!gp) return;
+  $("calRaw").textContent = `raw buttons [${gp.buttons.map((b, i) => (b.pressed ? i : null)).filter((x) => x !== null).join(" ")}]  axes ${gp.axes.map((a) => a.toFixed(2)).join(" ")}`;
   const pressedBtn = gp.buttons.findIndex((b, i) => b.pressed && !calState.used.has("b" + i));
-  const moved = gp.axes.findIndex((a, i) => Math.abs(a - (calState.base[i] || 0)) > 0.6 && !calState.used.has("a" + i + Math.sign(a - (calState.base[i] || 0))));
+  const isHat = (i) => Math.abs(calState.base[i] || 0) > 1.05;     // POV hats rest at ≈ +1.29
+  const moved = gp.axes.findIndex((a, i) => !isHat(i) && Math.abs(a - (calState.base[i] || 0)) > 0.6 && !calState.used.has("a" + i + Math.sign(a - (calState.base[i] || 0))));
+  const hatMoved = gp.axes.findIndex((a, i) => isHat(i) && Math.abs(a - calState.base[i]) > 0.1);
   const anyActive = gp.buttons.some((b) => b.pressed) || gp.axes.some((a, i) => Math.abs(a - (calState.base[i] || 0)) > 0.35);
   if (calState.waitRelease) { if (!anyActive) calState.waitRelease = false; return; }
   const target = CAL_STEPS[calState.step][0];
-  if (pressedBtn >= 0) {
+  const DIRS = { 12: "up", 13: "down", 14: "left", 15: "right" };
+  if (DIRS[target] && hatMoved >= 0 && pressedBtn < 0) {
+    // the whole d-pad is one hat axis: map all four directions from it at once
+    for (const t in DIRS) calState.map[t] = { t: "h", i: hatMoved, dir: DIRS[t] };
+    calState.hats.add(hatMoved);
+    buzz(); calState.step = CAL_STEPS.length - 1; nextCal(); return;
+  } else if (pressedBtn >= 0) {
     calState.map[target] = { t: "b", i: pressedBtn }; calState.used.add("b" + pressedBtn);
   } else if (moved >= 0) {
     const rest = calState.base[moved] || 0, d = Math.sign(gp.axes[moved] - rest);
@@ -1325,7 +1343,10 @@ window.addEventListener("pagehide", () => saveSRAM());
 
 /* ---------------- boot ---------------- */
 (async () => {
-  try { const s = await DB.get("kv", "settings"); if (s) Object.assign(settings, s); if (!settings.gpMap) settings.gpMap = { ...DEFAULT_MAP }; } catch {}
+  try { const s = await DB.get("kv", "settings"); if (s) Object.assign(settings, s); if (!settings.gpMap || JSON.stringify(settings.gpMap) === JSON.stringify(OLD_DEFAULT_MAP)) settings.gpMap = { ...DEFAULT_MAP };
+    // setups saved before hat-switch d-pads were understood can scramble the d-pad: drop them
+    if (settings.gpCal) for (const id in settings.gpCal) if (!settings.gpCal[id]._v) delete settings.gpCal[id];
+  } catch {}
   if (window.CartridgePad) CartridgePad.set(settings.gpCal || {});
   assignPlayers(); updateGpBanner(); setGpMode(false);
   syncOpts(); syncMute();
