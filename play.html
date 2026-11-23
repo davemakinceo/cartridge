@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Cartridge player</title>
+<title>DEVS player</title>
 <style>
-html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none}
+html,body{margin:0;height:100%;background:#02070b;overflow:hidden;overscroll-behavior:none}
 #game{width:100%;height:100%}
 #err{display:none;position:fixed;inset:0;color:#ececf1;font:15px/1.5 system-ui,sans-serif;padding:24px;text-align:center;align-items:center;justify-content:center}
 </style>
@@ -22,6 +22,8 @@ const CORES = {
   genesis: "genesis_plus_gx", sms: "genesis_plus_gx", gg: "genesis_plus_gx",
   n64: "mupen64plus_next", psx: "pcsx_rearmed", a2600: "stella2014",
   pce: "mednafen_pce", lynx: "handy", arcade: "fbneo", mame: "mame2003_plus",
+  sega32x: "picodrive", segacd: "genesis_plus_gx", saturn: "yabause", nds: "melonds", vb: "beetle_vb",
+  ngp: "mednafen_ngp", ws: "mednafen_wswan", a7800: "prosystem", a5200: "a5200", jaguar: "virtualjaguar", coleco: "gearcoleco",
 };
 const ARCADE = ["arcade", "mame"];
 const post = (msg) => { try { parent.postMessage(Object.assign({ cartridge: true }, msg), location.origin); } catch {} };
@@ -58,7 +60,9 @@ function getRom(id) {
   // Pick the on-screen pad layout explicitly. EmulatorJS otherwise guesses from the core name, and
   // genesis_plus_gx (Genesis, Master System, Game Gear) is guessed as Master System = 2 buttons.
   const SCHEMES = { gb: "gb", gbc: "gb", gba: "gba", snes: "snes", genesis: "segaMD", sms: "segaMS", gg: "segaGG",
-    n64: "n64", psx: "psx", a2600: "atari2600", pce: "pce", lynx: "lynx", arcade: "arcade", mame: "mame" };
+    n64: "n64", psx: "psx", a2600: "atari2600", pce: "pce", lynx: "lynx", arcade: "arcade", mame: "mame",
+    sega32x: "sega32x", segacd: "segaCD", saturn: "segaSaturn", nds: "nds", vb: "vb", ngp: "ngp", ws: "ws",
+    a7800: "atari7800", a5200: "atari5200", jaguar: "jaguar", coleco: "coleco" };
   window.EJS_controlScheme = SCHEMES[rom.system];
   if (rom.system === "psx") {
     // EmulatorJS has no PlayStation pad, and its fallback lacks shoulder buttons.
@@ -90,9 +94,12 @@ function getRom(id) {
       { type: "button", text: "Coin", id: "coin", location: "center", left: -5, fontSize: 15, block: true, input_value: 2 },
       { type: "button", text: "Start", id: "start", location: "center", left: 60, fontSize: 15, block: true, input_value: 3 },
     ];
-    // BIOS zips (neogeo.zip…) go in the same folder as the game, still zipped.
-    let support = [];
-    try { support = (await allRoms()).filter((r) => r.bios); } catch {}
+  }
+  // BIOS files go in the same folder as the game: RetroArch looks there when no system folder is set.
+  // Arcade BIOS zips (neogeo.zip…) stay zipped; console BIOS files keep the names the cores expect.
+  let support = [];
+  try { support = (await allRoms()).filter((r) => r.bios && (r.system === rom.system || (ARCADE.includes(r.system) && ARCADE.includes(rom.system)))); } catch {}
+  if (support.length) {
     const putFiles = (fs) => {
       for (const b of support) { try { fs.writeFile(b.file, b.data); } catch (e) { console.warn("BIOS write failed", b.file, e); } }
     };
@@ -109,7 +116,7 @@ function getRom(id) {
   window.EJS_gameUrl = new File([rom.data], ARCADE.includes(rom.system) && rom.file ? rom.file : `${rom.id}.${rom.ext}`);
   window.EJS_pathtodata = "ejs/";
   window.EJS_startOnLoaded = true;
-  window.EJS_color = "#e5484d";
+  window.EJS_color = "#4fe3ff";
   window.EJS_backgroundColor = "#000000";
   window.EJS_language = "en-US";
   window.EJS_disableAutoLang = false;                             // don't fetch other languages (offline)
@@ -119,22 +126,26 @@ function getRom(id) {
   window.EJS_Buttons = { netplay: false, cacheManager: false, exitEmulation: false };
   window.EJS_ready = () => post({ type: "ready" });
   const setTouchPad = (on) => { try { window.EJS_emulator.changeSettingOption("virtual-gamepad", on ? "enabled" : "disabled"); } catch {} };
-  // Friendlier physical-button defaults (EmulatorJS's put Genesis jump on ✕ and left □ unused).
-  // RetroPad slot -> controller button. Applied only while the user hasn't customised controls.
-  const LAYOUTS = {
-    // Genesis A B C across □ ✕ ○, X Y Z on L1 △ R1 · Master System / Game Gear 1 2 on ✕ ○
-    sega: { 1: "BUTTON_3", 0: "BUTTON_1", 8: "BUTTON_2", 9: "BUTTON_4", 10: "LEFT_TOP_SHOULDER", 11: "RIGHT_TOP_SHOULDER" },
-    // Street Fighter style: punches □ △ R1, kicks ✕ ○ R2 · Neo Geo A B C D = ✕ ○ □ △
-    arcade: { 1: "BUTTON_3", 9: "BUTTON_4", 10: "RIGHT_TOP_SHOULDER", 0: "BUTTON_1", 8: "BUTTON_2", 11: "RIGHT_BOTTOM_SHOULDER" },
-  };
-  const layout = ["genesis", "sms", "gg"].includes(rom.system) ? LAYOUTS.sega : ARCADE.includes(rom.system) ? LAYOUTS.arcade : null;
+  // Physical buttons, SNES positions on every system (Backbone PS labels in brackets):
+  // B = bottom ✕, A = right ○, Y = left □, X = top △, L/R = L1/R1, L2/R2 = L2/R2.
+  // That gives Genesis A B C on □ ✕ ○, Street Fighter punches □ △ L1 / kicks ✕ ○ R1, PlayStation as printed.
+  // N64: A ✕, B □, L L1, Z R2, R (aim in shooters) L2, C buttons on the right stick.
+  // RetroPad slots: B0 Y1 Select2 Start3 A8 X9 L10 R11 L2=12 R2=13 (N64: A0 B1 L10 R11 Z12)
+  const SNES = { 0: "BUTTON_1", 8: "BUTTON_2", 1: "BUTTON_3", 9: "BUTTON_4", 2: "SELECT", 3: "START",
+    10: "LEFT_TOP_SHOULDER", 11: "RIGHT_TOP_SHOULDER", 12: "LEFT_BOTTOM_SHOULDER", 13: "RIGHT_BOTTOM_SHOULDER" };
+  const N64 = { 0: "BUTTON_1", 1: "BUTTON_3", 3: "START", 10: "LEFT_TOP_SHOULDER", 11: "LEFT_BOTTOM_SHOULDER", 12: "RIGHT_BOTTOM_SHOULDER" };
+  const layout = rom.system === "n64" ? N64 : SNES;
   function applyLayout() {
-    const c = window.EJS_emulator?.controls?.[0];
-    if (!layout || !c) return;
-    const pristine = c[0]?.value2 === "BUTTON_2" && c[1]?.value2 === "BUTTON_4" && c[8]?.value2 === "BUTTON_1" && c[9]?.value2 === "BUTTON_3";
-    if (!pristine) return;
+    const emu = window.EJS_emulator, c = emu?.controls?.[0];
+    if (!c) return;
+    // Leave controls alone once the player has remapped them in the game's own controller menu:
+    // only apply over EmulatorJS's factory face buttons or one of this app's earlier layouts.
+    const face = [c[0]?.value2, c[8]?.value2].join();
+    const ours = ["BUTTON_2,BUTTON_1", "BUTTON_1,BUTTON_2", "BUTTON_1,BUTTON_1", "BUTTON_2,", "BUTTON_1,"].includes(face);   // N64 has no slot 8
+    if (!ours) return;
     for (const k in layout) { c[k] = c[k] || {}; c[k].value2 = layout[k]; }
-    try { window.EJS_emulator.checkGamepadInputs?.(); } catch {}
+    if (rom.system === "n64" && c[9]) c[9].value2 = "";    // X slot isn't an N64 button
+    try { emu.checkGamepadInputs?.(); } catch {}
   }
   window.EJS_onGameStart = () => {
     applyLayout();

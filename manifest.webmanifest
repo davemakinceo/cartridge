@@ -1,13 +1,13 @@
 {
- "name": "Cartridge",
- "short_name": "Cartridge",
- "description": "Offline retro console emulator",
+ "name": "DEVS",
+ "short_name": "DEVS",
+ "description": "Offline retro game console",
  "start_url": "./",
  "scope": "./",
  "display": "fullscreen",
  "orientation": "any",
- "background_color": "#121216",
- "theme_color": "#121216",
+ "background_color": "#02070b",
+ "theme_color": "#02070b",
  "icons": [
   {
    "src": "icon-192.png",

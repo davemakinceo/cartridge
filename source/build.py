@@ -1,5 +1,4 @@
 import json, hashlib, pathlib, shutil
-from PIL import Image, ImageDraw
 root = pathlib.Path(__file__).parent
 out = root/"dist"
 shutil.rmtree(out, ignore_errors=True); out.mkdir()
@@ -23,29 +22,27 @@ shutil.copytree(ejs_src/"compression", ejs/"compression")
 shutil.copy(ejs_src/"localization/en-US.json", ejs/"localization/en-US.json")
 shutil.copy(root/"node_modules/@emulatorjs/emulatorjs/LICENSE", ejs/"LICENSE.txt")
 (ejs/"version.json").write_text((ejs_src/"version.json").read_text())
-CORES = ["fbneo","mame2003_plus","gambatte","mgba","snes9x","genesis_plus_gx","mupen64plus_next","pcsx_rearmed","stella2014","mednafen_pce","handy"]
+CORES = ["picodrive","yabause","melonds","beetle_vb","mednafen_ngp","mednafen_wswan","prosystem","a5200","virtualjaguar","gearcoleco","fbneo","mame2003_plus","gambatte","mgba","snes9x","genesis_plus_gx","mupen64plus_next","pcsx_rearmed","stella2014","mednafen_pce","handy"]
 for c in CORES:
     pkg = root/f"node_modules/@emulatorjs/core-{c}"
     for v in ("wasm", "legacy-wasm"):
         shutil.copy(pkg/f"{c}-{v}.data", ejs/f"cores/{c}-{v}.data")
     shutil.copy(pkg/f"reports/{c}.json", ejs/f"cores/reports/{c}.json")
 
-def icon(size, maskable=False):
-    im = Image.new("RGB", (size, size), "#121216"); d = ImageDraw.Draw(im); s = size/192
-    pad = 0 if maskable else 12*s
-    d.rounded_rectangle([pad, pad, size-pad, size-pad], radius=(0 if maskable else 40*s), fill="#e5484d")
-    d.rounded_rectangle([56*s, 62*s, 136*s, 128*s], radius=8*s, outline="white", width=int(11*s))
-    d.rectangle([76*s, 128*s, 116*s, 140*s], fill="white")
-    return im
-icon(192).save(out/"icon-192.png"); icon(512).save(out/"icon-512.png"); icon(512, True).save(out/"icon-maskable.png")
+for f in ["icon-192.png","icon-512.png","icon-maskable.png","apple-touch-icon.png","logo.webp"]:
+    shutil.copy(root/"src/assets"/f, out/f)
+shutil.copy(root/"src/tron.css", out/"tron.css")
+(out/"fonts").mkdir()
+for w, src in [("500","400"),("700","700"),("900","900")]:
+    shutil.copy(root/f"node_modules/@fontsource/orbitron/files/orbitron-latin-{src}-normal.woff2", out/f"fonts/orbitron-{w}.woff2")
 (out/"manifest.webmanifest").write_text(json.dumps({
-  "name": "Cartridge", "short_name": "Cartridge", "description": "Offline retro console emulator",
+  "name": "DEVS", "short_name": "DEVS", "description": "Offline retro game console",
   "start_url": "./", "scope": "./", "display": "fullscreen", "orientation": "any",
-  "background_color": "#121216", "theme_color": "#121216",
+  "background_color": "#02070b", "theme_color": "#02070b",
   "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
             {"src": "icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}]}, indent=1))
-shell = ["./", "index.html", "play.html", "pad.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable.png",
+shell = ["./", "index.html", "play.html", "pad.js", "tron.css", "logo.webp", "apple-touch-icon.png", "fonts/orbitron-500.woff2", "fonts/orbitron-700.woff2", "fonts/orbitron-900.woff2", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable.png",
          "ejs/loader.js", "ejs/emulator.min.js", "ejs/emulator.min.css", "ejs/localization/en-US.json",
          "ejs/compression/extractzip.js", "ejs/compression/extract7z.js"]
 ver = hashlib.sha1(b"".join((out/f).read_bytes() for f in shell if f != "./")).hexdigest()[:10]

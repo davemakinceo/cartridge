@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#121216">
+<meta name="theme-color" content="#02070b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Cartridge</title>
+<title>DEVS</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>window.__cartridgeApp = true;</script>
 <script src="pad.js"></script>
 <style>
@@ -153,21 +154,22 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .maprow span{color:var(--mute);font-size:13px}
 .maprow.listen span{color:var(--accent2)}
 </style>
+<link rel="stylesheet" href="tron.css">
 </head>
 <body>
 
 <!-- ================= LIBRARY ================= -->
 <section id="library">
-  <div class="brand">
-    <div class="brand-mark"><span></span></div>
-    <div><h1>Cartridge</h1><p>Retro console emulator · runs offline</p></div>
-  </div>
+  <header class="hero">
+    <img src="logo.webp" alt="DEVS" class="logo" width="1200" height="563">
+    <p class="tag">Retro game console · offline</p>
+  </header>
   <button class="add" id="addBtn">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     Add ROM from phone
   </button>
   <input type="file" id="fileIn" accept="*/*" multiple hidden>
-  <p class="hint">NES, Game Boy / Color / Advance, SNES, Genesis, Master System, Game Gear, N64, PlayStation, Atari 2600, TurboGrafx-16, Lynx and arcade (FBNeo / MAME 2003-Plus). Zipped games work too. Games stay on this device.</p>
+  <p class="hint">NES, Game Boy / Color / Advance, SNES, Genesis, Master System, Game Gear, N64, PlayStation, Atari 2600, TurboGrafx-16, Lynx, 32X, Sega CD, Saturn, Nintendo DS, Virtual Boy, Neo Geo Pocket, WonderSwan, Atari 7800 / 5200 / Jaguar, ColecoVision and arcade (FBNeo / MAME 2003-Plus). Zipped games work too. Games stay on this device.</p>
   <div class="gp-banner" id="gpBanner">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01M7 5h10a4 4 0 014 4l1 7a3 3 0 01-5 2l-2-2H9l-2 2a3 3 0 01-5-2l1-7a4 4 0 014-4z"/></svg>
     <span id="gpText">Controller connected</span>
@@ -180,7 +182,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <b>Install:</b> in Chrome, tap ⋮ → <b>Add to Home screen</b> (or <b>Install app</b>). It then opens full-screen and works with no connection.<br>
     <b>Controllers:</b> clip in a Backbone One, or pair an Xbox, PlayStation, Switch Pro or 8BitDo pad over Bluetooth (or plug in USB). Press any button once after opening the app so the browser picks it up. The first controller is Player 1 and a second one is Player 2. Remap buttons from the in-game menu.<br>
     <b>Saves:</b> in-game saves are kept automatically. NES has 3 quick-save slots in its menu; other systems have save/load state in their bottom bar.<br>
-    <b>PlayStation:</b> use .chd or .pbp files, or a .zip holding the .cue + .bin.<br>\n    <b>Arcade:</b> add game zips with their original short names (sf2.zip, mslug.zip). Neo Geo games also need <b>neogeo.zip</b> added once. Use non-merged sets.<br>
+    <b>Disc games</b> (PlayStation, Sega CD, Saturn): use .chd files, or a .zip holding the .cue + .bin files.<br>\n    <b>BIOS files:</b> Sega CD, Saturn, Atari 5200 and ColecoVision need the console's BIOS. Add it like a game; it's kept once and used automatically.<br>\n    <b>Arcade:</b> add game zips with their original short names (sf2.zip, mslug.zip). Neo Geo games also need <b>neogeo.zip</b> added once. Use non-merged sets.<br>
     Only play ROMs you have the right to use — homebrew games or dumps of cartridges you own.<br>
     Non-NES systems use EmulatorJS and RetroArch cores (GPL-3.0).
     <button class="offline" id="offlineBtn">Download every system for offline play<small id="offlineS">Cores download on first use otherwise (about 1–1.5 MB each)</small></button>
@@ -325,23 +327,54 @@ const DB = (() => {
 
 const DEFAULT_MAP = { A: 0, B: 2, TA: 1, TB: 3, SELECT: 8, START: 9, up: 12, down: 13, left: 14, right: 15 };
 const SYSTEMS = {
-  nes:     { name: "NES",                 tag: "NES",  color: "#e5484d", exts: ["nes"] },
-  gb:      { name: "Game Boy",            tag: "GB",   color: "#7a8b3c", exts: ["gb"] },
-  gbc:     { name: "Game Boy Color",      tag: "GBC",  color: "#8e4ec6", exts: ["gbc"] },
-  gba:     { name: "Game Boy Advance",    tag: "GBA",  color: "#3e63dd", exts: ["gba"] },
-  snes:    { name: "SNES",                tag: "SNES", color: "#6e56cf", exts: ["sfc", "smc"] },
-  genesis: { name: "Genesis / Mega Drive", tag: "MD",  color: "#1f2937", exts: ["md", "gen", "smd"] },
-  sms:     { name: "Master System",       tag: "SMS",  color: "#2563eb", exts: ["sms"] },
-  gg:      { name: "Game Gear",           tag: "GG",   color: "#0f766e", exts: ["gg"] },
-  n64:     { name: "Nintendo 64",         tag: "N64",  color: "#16a34a", exts: ["n64", "z64", "v64"] },
-  psx:     { name: "PlayStation",         tag: "PS1",  color: "#64748b", exts: ["chd", "pbp", "cue", "m3u"] },
-  a2600:   { name: "Atari 2600",          tag: "2600", color: "#b45309", exts: ["a26"] },
-  pce:     { name: "TurboGrafx-16",       tag: "PCE",  color: "#ea580c", exts: ["pce"] },
-  lynx:    { name: "Atari Lynx",          tag: "LNX",  color: "#a16207", exts: ["lnx"] },
-  arcade:  { name: "Arcade (FBNeo)",      tag: "ARC",  color: "#be123c", exts: [] },
-  mame:    { name: "Arcade (MAME 2003+)", tag: "MAME", color: "#0e7490", exts: [] },
+  nes:     { name: "NES",                 tag: "NES",  color: "#ff4d5e", exts: ["nes"] },
+  gb:      { name: "Game Boy",            tag: "GB",   color: "#b7f05a", exts: ["gb"] },
+  gbc:     { name: "Game Boy Color",      tag: "GBC",  color: "#c48bff", exts: ["gbc"] },
+  gba:     { name: "Game Boy Advance",    tag: "GBA",  color: "#6d8bff", exts: ["gba"] },
+  snes:    { name: "SNES",                tag: "SNES", color: "#a78bff", exts: ["sfc", "smc"] },
+  genesis: { name: "Genesis / Mega Drive", tag: "MD",  color: "#dfe8f0", exts: ["md", "gen", "smd"] },
+  sms:     { name: "Master System",       tag: "SMS",  color: "#4d9bff", exts: ["sms"] },
+  gg:      { name: "Game Gear",           tag: "GG",   color: "#2ee6c5", exts: ["gg"] },
+  n64:     { name: "Nintendo 64",         tag: "N64",  color: "#46f07a", exts: ["n64", "z64", "v64"] },
+  psx:     { name: "PlayStation",         tag: "PS1",  color: "#b8c8e0", exts: ["pbp"] },
+  a2600:   { name: "Atari 2600",          tag: "2600", color: "#ffb347", exts: ["a26"] },
+  pce:     { name: "TurboGrafx-16",       tag: "PCE",  color: "#ff8a3d", exts: ["pce"] },
+  lynx:    { name: "Atari Lynx",          tag: "LNX",  color: "#ffd84d", exts: ["lnx"] },
+  sega32x: { name: "Sega 32X",            tag: "32X",  color: "#f2f26b", exts: ["32x"] },
+  segacd:  { name: "Sega CD",             tag: "SCD",  color: "#7ab8ff", exts: [] },
+  saturn:  { name: "Sega Saturn",         tag: "SAT",  color: "#9d8cff", exts: [] },
+  nds:     { name: "Nintendo DS",         tag: "NDS",  color: "#e8e8f0", exts: ["nds"] },
+  vb:      { name: "Virtual Boy",         tag: "VB",   color: "#ff3b3b", exts: ["vb", "vboy"] },
+  ngp:     { name: "Neo Geo Pocket",      tag: "NGP",  color: "#5ef0d0", exts: ["ngp", "ngc"] },
+  ws:      { name: "WonderSwan",          tag: "WS",   color: "#ffa6d9", exts: ["ws", "wsc"] },
+  a7800:   { name: "Atari 7800",          tag: "7800", color: "#ffc266", exts: ["a78"] },
+  a5200:   { name: "Atari 5200",          tag: "5200", color: "#ffad5c", exts: ["a52"] },
+  jaguar:  { name: "Atari Jaguar",        tag: "JAG",  color: "#ff6b6b", exts: ["j64", "jag"] },
+  coleco:  { name: "ColecoVision",        tag: "CV",   color: "#8fd3ff", exts: ["col"] },
+  arcade:  { name: "Arcade (FBNeo)",      tag: "ARC",  color: "#ff4fb4", exts: [] },
+  mame:    { name: "Arcade (MAME 2003+)", tag: "MAME", color: "#39d0ff", exts: [] },
 };
 const ARCADE = ["arcade", "mame"];
+/* disc-based systems share file types (.cue/.bin/.chd/.iso), so ask which one when the disc can't be read */
+const DISC = ["psx", "segacd", "saturn"];
+const DISC_EXTS = ["chd", "cue", "iso", "m3u", "img", "bin", "ccd", "mds"];
+/* console BIOS files, by the names emulators look for: lowercase name -> [system, name to store] */
+const CONSOLE_BIOS = {
+  "bios_cd_u.bin": ["segacd", "bios_CD_U.bin"], "bios_cd_e.bin": ["segacd", "bios_CD_E.bin"], "bios_cd_j.bin": ["segacd", "bios_CD_J.bin"],
+  "saturn_bios.bin": ["saturn", "saturn_bios.bin"], "sega_101.bin": ["saturn", "sega_101.bin"], "mpr-17933.bin": ["saturn", "mpr-17933.bin"],
+  "scph5500.bin": ["psx", "scph5500.bin"], "scph5501.bin": ["psx", "scph5501.bin"], "scph5502.bin": ["psx", "scph5502.bin"], "scph1001.bin": ["psx", "scph1001.bin"],
+  "5200.rom": ["a5200", "5200.rom"], "colecovision.rom": ["coleco", "colecovision.rom"], "coleco.rom": ["coleco", "colecovision.rom"],
+  "7800 bios (u).rom": ["a7800", "7800 BIOS (U).rom"], "bios7.bin": ["nds", "bios7.bin"], "bios9.bin": ["nds", "bios9.bin"],
+  "firmware.bin": ["nds", "firmware.bin"], "lynxboot.img": ["lynx", "lynxboot.img"],
+};
+/* systems that won't start without one; the default name to store a BIOS under */
+const NEEDS_BIOS = { segacd: "bios_CD_U.bin", saturn: "saturn_bios.bin", a5200: "5200.rom", coleco: "colecovision.rom" };
+function biosNameFor(system, fileName) {
+  const n = fileName.toLowerCase();
+  if (system === "segacd") return /eu|europe|pal|mega.?cd/.test(n) ? "bios_CD_E.bin" : /jp|japan/.test(n) ? "bios_CD_J.bin" : "bios_CD_U.bin";
+  if (system === "psx") return "scph5501.bin";
+  return NEEDS_BIOS[system];
+}
 /* support files arcade games load from the same folder (kept zipped, never shown as games) */
 const ARCADE_BIOS = ["neogeo", "pgm", "skns", "nmk004", "isgsm", "ym2608", "cchip", "decocass", "bubsys", "qsound",
   "namcoc69", "namcoc70", "namcoc75", "spec2k", "hng64", "midssio", "coleco", "neocdz", "konamigx", "taitofx1", "cpzn1", "cpzn2", "tps"];
@@ -349,7 +382,7 @@ const ARCADE_BIOS = ["neogeo", "pgm", "skns", "nmk004", "isgsm", "ym2608", "cchi
 const isSetName = (n) => /^[a-z0-9_]{1,20}\.zip$/i.test(n.replace(/^.*[\\/]/, ""));
 const EXT2SYS = {};
 for (const [k, v] of Object.entries(SYSTEMS)) v.exts.forEach((e) => (EXT2SYS[e] = k));
-const CORE_FILES = ["fbneo", "mame2003_plus", "gambatte", "mgba", "snes9x", "genesis_plus_gx", "mupen64plus_next", "pcsx_rearmed", "stella2014", "mednafen_pce", "handy"];
+const CORE_FILES = ["picodrive", "yabause", "melonds", "beetle_vb", "mednafen_ngp", "mednafen_wswan", "prosystem", "a5200", "virtualjaguar", "gearcoleco", "fbneo", "mame2003_plus", "gambatte", "mgba", "snes9x", "genesis_plus_gx", "mupen64plus_next", "pcsx_rearmed", "stella2014", "mednafen_pce", "handy"];
 
 /* look inside the file when the extension doesn't settle it */
 function sniff(d) {
@@ -359,16 +392,27 @@ function sniff(d) {
   if (d.length > 0x150 && at(0x104, [0xce, 0xed, 0x66, 0x66])) return (d[0x143] & 0x80) ? "gbc" : "gb";
   if (d.length > 0xc0 && at(0x04, [0x24, 0xff, 0xae, 0x51]) && d[0xb2] === 0x96) return "gba";
   if (at(0, [0x80, 0x37, 0x12, 0x40]) || at(0, [0x37, 0x80, 0x40, 0x12]) || at(0, [0x40, 0x12, 0x37, 0x80])) return "n64";
+  if (str(0x100, "SEGA 32X") || str(0x104, "32X")) return "sega32x";
+  for (const o of [0, 0x10]) {
+    if (str(o, "SEGADISCSYSTEM")) return "segacd";
+    if (str(o, "SEGA SEGASATURN")) return "saturn";
+  }
+  if (d.length > 0x9330 && str(0x9320, "PLAYSTATION")) return "psx";
+  if (d.length > 0x160 && at(0xc0, [0x24, 0xff, 0xae, 0x51])) return "nds";
+  if (str(1, "ATARI7800")) return "a7800";
   for (let o = 0x100; o <= 0x10c; o++) if (str(o, "SEGA")) return "genesis";   // "SEGA GENESIS", " SEGA MEGA DRIVE"…
   if (str(0, "LYNX")) return "lynx";
   if (str(0, "MComprHD")) return "psx";
   if (str(0x7ff0, "TMR SEGA")) return "sms";
   return null;
 }
-function pickSystem(fileName, only = null, note = "") {
+function pickSystem(fileName, only = null, note = "", withBios = !only) {
   return new Promise((res) => {
     const pick = $("dlgPick");
-    pick.innerHTML = Object.entries(SYSTEMS).filter(([k]) => !only || only.includes(k)).map(([k, v]) => `<button data-sys="${k}">${v.name}</button>`).join("");
+    if (only) only = only.filter((k) => SYSTEMS[k] || k === "__more");
+    pick.innerHTML = Object.entries(SYSTEMS).filter(([k]) => !only || only.includes(k)).map(([k, v]) => `<button data-sys="${k}">${v.name}</button>`).join("")
+      + (only && only.includes("__more") ? `<button data-sys="__more">Something else…</button>` : "")
+      + (withBios ? `<button data-sys="__bios" style="grid-column:1/-1">It's a BIOS file</button>` : "");
     pick.onclick = (e) => { const b = e.target.closest("[data-sys]"); if (b) { done(); res(b.dataset.sys); } };
     const done = () => { pick.innerHTML = ""; pick.onclick = null; $("dlg").classList.add("hidden"); };
     ask(`Which system is "${fileName}" for?${note ? "\n\n" + note : ""}`, "Skip").then(() => { pick.innerHTML = ""; res(null); });
@@ -416,7 +460,9 @@ const at7zOrRar = (d) =>
 /* archive names often carry the system: "Sonic (USA) [Genesis].7z", "Game (GBA).7z" */
 function guessFromName(n) {
   const t = n.toLowerCase();
-  const hints = [["genesis", /genesis|mega ?drive|\bmd\b|\bsmd\b/], ["gba", /\bgba\b|game ?boy advance/], ["gbc", /\bgbc\b|game ?boy colou?r/],
+  const hints = [["sega32x", /\b32x\b/], ["segacd", /sega ?cd|mega ?cd/], ["saturn", /saturn/], ["nds", /\bnds\b|nintendo ds/],
+    ["vb", /virtual ?boy/], ["ngp", /neo ?geo pocket|\bngpc?\b/], ["ws", /wonder ?swan/], ["a7800", /7800/], ["a5200", /5200/],
+    ["jaguar", /jaguar/], ["coleco", /coleco/], ["genesis", /genesis|mega ?drive|\bmd\b|\bsmd\b/], ["gba", /\bgba\b|game ?boy advance/], ["gbc", /\bgbc\b|game ?boy colou?r/],
     ["gb", /\bgb\b|game ?boy/], ["snes", /snes|super nintendo|super famicom|\bsfc\b/], ["n64", /\bn64\b|nintendo 64/],
     ["psx", /\bps1\b|\bpsx\b|playstation/], ["sms", /master ?system|\bsms\b/], ["gg", /game ?gear|\bgg\b/],
     ["pce", /turbografx|pc ?engine|\bpce\b/], ["a2600", /2600/], ["lynx", /lynx/]];
@@ -440,9 +486,17 @@ function cleanName(n) {
   return n.replace(/^.*[\\/]/, "").replace(/\.[a-z0-9]{1,4}$/i, "").replace(/[_]+/g, " ").trim() || "Untitled";
 }
 
+async function storeBios(system, file, data) {
+  const id = await hashId(data);
+  await DB.put("roms", { id, system, bios: true, ext: extOf(file), file, name: file, size: data.length, added: Date.now(), played: 0, data });
+  toast(`${file} added as ${SYSTEMS[system].name} BIOS`);
+  return null;
+}
 async function importFile(file) {
   const buf = await file.arrayBuffer();
   let name = file.name, data = new Uint8Array(buf), ext = extOf(name), system = null;
+  const known = CONSOLE_BIOS[file.name.replace(/^.*[\\/]/, "").toLowerCase()];
+  if (known) return storeBios(known[0], known[1], data);
 
   if (data[0] === 0x50 && data[1] === 0x4b && data[2] === 3) {          // zip
     const entries = zipEntries(buf).filter((e) => !e.name.endsWith("/"));
@@ -465,9 +519,15 @@ async function importFile(file) {
     } else if (nes) { data = await unzipEntry(buf, nes); name = nes.name; ext = "nes"; system = "nes"; }
     else {
       // keep the zip whole (the emulator unzips it itself — needed for .cue + .bin sets)
-      const known = entries.map((e) => EXT2SYS[extOf(e.name)]).find(Boolean)
-        || (entries.some((e) => /\.(bin|iso|img)$/i.test(e.name)) && entries.some((e) => extOf(e.name) === "cue") ? "psx" : null);
+      const known = entries.map((e) => EXT2SYS[extOf(e.name)]).find(Boolean);
+      const isDisc = entries.some((e) => ["cue", "chd", "iso", "m3u", "ccd"].includes(extOf(e.name)));
       if (known) { system = known; ext = "zip"; }
+      else if (isDisc) {
+        system = guessFromName(file.name);
+        if (!DISC.includes(system)) system = await pickSystem(file.name, DISC, "Disc games: pick the console this disc is for.");
+        if (!system) return null;
+        ext = "zip";
+      }
       else if (entries.length === 1) {
         const inner = await unzipEntry(buf, entries[0]);
         system = sniff(inner); if (system) { data = inner; name = entries[0].name; ext = extOf(name) || "bin"; }
@@ -483,15 +543,25 @@ async function importFile(file) {
     if (system === "nes") throw new Error(`For NES, extract "${file.name}" first and add the .nes file`);
   } else {
     system = EXT2SYS[ext] || sniff(data);
+    if (!system && DISC_EXTS.includes(ext)) {
+      system = guessFromName(file.name);
+      if (!DISC.includes(system)) system = await pickSystem(file.name, DISC.concat(ext === "bin" ? ["genesis", "a2600", "__more"] : []),
+        "Disc image (or a .bin cartridge): pick the console it's for.", true);
+      if (system === "__more") system = await pickSystem(file.name);
+    }
     if (!system) system = await pickSystem(file.name);
+    if (system === "__bios") {
+      const owner = await pickSystem(file.name, ["segacd", "saturn", "psx", "a5200", "coleco"], "Which console is this BIOS for?", false);
+      return owner ? storeBios(owner, biosNameFor(owner, file.name), data) : null;
+    }
     if (!system) return null;
-    if (!ext || (!EXT2SYS[ext] && system !== "psx")) ext = SYSTEMS[system].exts[0];
+    if (!ext || (!EXT2SYS[ext] && !DISC.includes(system))) ext = SYSTEMS[system].exts[0] || ext;
   }
   if (system === "nes" && !(data[0] === 0x4e && data[1] === 0x45 && data[2] === 0x53 && data[3] === 0x1a))
     throw new Error(`"${file.name}" isn't a valid NES ROM`);
   if (ARCADE.includes(system) && !isSetName(file.name))
     setTimeout(() => ask(`Heads up: arcade games only run with their original short file name (like sf2.zip or mslug.zip). "${file.name}" was renamed, so it probably won't start.`), 300);
-  if (system === "psx" && ext === "cue") throw new Error(`"${file.name}" is only the .cue — zip it together with its .bin file(s), or use a .chd / .pbp`);
+  if (DISC.includes(system) && ext === "cue") throw new Error(`"${file.name}" is only the .cue — zip it together with its .bin file(s), or use a .chd / .pbp`);
 
   const id = await hashId(data);
   const existing = await DB.get("roms", id);
@@ -530,16 +600,16 @@ async function renderLibrary() {
   if (filter !== "all") roms = roms.filter((r) => r.system === filter);
   $("count").textContent = roms.length ? `${roms.length} game${roms.length > 1 ? "s" : ""}` : "";
   const el = $("roms");
-  const biosRow = bios.length ? `<p class="hint" style="margin:14px 2px 0">Arcade BIOS files: ${bios.map((b) =>
-    `<b>${esc(b.file)}</b> <button class="rom-del" style="width:auto;height:auto;padding:2px 6px;font-size:12px" data-del="${b.id}">remove</button>`).join(" · ")}</p>` : "";
+  const biosRow = bios.length ? `<p class="hint" style="margin:14px 2px 0">BIOS files: ${bios.map((b) =>
+    `<b>${esc(b.file)}</b> (${SYSTEMS[b.system] ? SYSTEMS[b.system].name.replace(/ \(.*\)/, "") : "?"}) <button class="rom-del" style="width:auto;height:auto;padding:2px 6px;font-size:12px" data-del="${b.id}">remove</button>`).join(" · ")}</p>` : "";
   if (!roms.length) {
     el.innerHTML = `<div class="empty">No games yet. Tap <b>Add ROM from phone</b> and choose a game file from your Downloads.</div>` + biosRow;
     return;
   }
   el.innerHTML = roms.map((r) => `
-    <div class="rom">
+    <div class="rom" style="--c:${SYSTEMS[r.system].color}">
       <button class="rom-play" data-id="${r.id}">
-        <div class="rom-ico" style="background:${SYSTEMS[r.system].color}">${SYSTEMS[r.system].tag}</div>
+        <div class="rom-ico" style="--c:${SYSTEMS[r.system].color}">${SYSTEMS[r.system].tag}</div>
         <div style="min-width:0"><div class="rom-name">${esc(r.name)}</div>
         <div class="rom-meta">${SYSTEMS[r.system].name} · ${ago(r.played)} · ${r.size > 2 ** 20 ? (r.size / 2 ** 20).toFixed(1) + " MB" : Math.round(r.size / 1024) + " KB"}</div></div>
       </button>
@@ -699,7 +769,12 @@ $("backBtn").onclick = () => history.back();
 
 /* ---------------- Other systems: EmulatorJS in a same-origin frame ---------------- */
 let ejsActive = false, ejsExitResolve = null;
-function startOther(rom) {
+async function startOther(rom) {
+  const need = NEEDS_BIOS[rom.system];
+  if (need) {
+    const have = (await DB.all("roms")).some((r) => r.bios && r.system === rom.system);
+    if (!have && !(await ask(`${SYSTEMS[rom.system].name} games need the console's BIOS file (for example ${need}). Add it with "Add ROM from phone" — it's stored once and used for every game.`, "Try anyway", "Cancel"))) return;
+  }
   ejsActive = true;
   rom.played = Date.now(); DB.put("roms", rom);
   const el = $("ejsPlayer");
@@ -765,8 +840,10 @@ window.addEventListener("popstate", () => {
 /* ---------------- Screen sizing ---------------- */
 function layout() {
   const w = $("screenWrap");
-  const r = w.getBoundingClientRect();
-  const s = Math.min(r.width / 256, r.height / 240);
+  const r = w.getBoundingClientRect(), cs = getComputedStyle(w);
+  const W = r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const H = r.height - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const s = Math.min(W / 256, H / 240);
   // whole-number scaling when it fits well, otherwise smooth fill
   const scale = s >= 2 && (s % 1) < 0.25 ? Math.floor(s) : s;
   canvas.style.width = Math.floor(256 * scale) + "px";
