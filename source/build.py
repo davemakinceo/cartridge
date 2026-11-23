@@ -16,6 +16,13 @@ order = ["emulator.js","nipplejs.js","shaders.js","storage.js","gamepad.js","Gam
 bundle = "\n;\n".join((ejs_src/"src"/f).read_text() for f in order)
 assert "    checkForUpdates() {" in bundle
 bundle = bundle.replace("    checkForUpdates() {", "    checkForUpdates() { return; // offline app: no update ping", 1)
+# let the player page adjust the on-screen controls (joystick instead of d-pad, wider button spacing)
+hook_at = "        info = JSON.parse(JSON.stringify(info));\n"
+assert bundle.count(hook_at) == 1
+bundle = bundle.replace(hook_at, hook_at + "        if (typeof window.EJS_tweakGamepad === 'function') { try { info = window.EJS_tweakGamepad(info, this.getControlScheme()) || info; } catch (e) { console.warn(e); } }\n")
+size_at = '"color": zone.color || "red"\n'
+assert bundle.count(size_at) == 1
+bundle = bundle.replace(size_at, '"color": zone.color || "red",\n                "size": zone.size || 100\n')
 (ejs/"emulator.min.js").write_text(bundle)
 shutil.copy(ejs_src/"emulator.css", ejs/"emulator.min.css")
 shutil.copytree(ejs_src/"compression", ejs/"compression")

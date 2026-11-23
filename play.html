@@ -7,6 +7,12 @@
 <style>
 html,body{margin:0;height:100%;background:#02070b;overflow:hidden;overscroll-behavior:none}
 #game{width:100%;height:100%}
+/* DEVS neon look for the emulator's on-screen controls */
+.ejs_virtualGamepad_button{border:2px solid #4fe3ff!important;color:#4fe3ff!important;background:rgba(79,227,255,.08)!important;
+  box-shadow:0 0 8px rgba(79,227,255,.55),inset 0 0 10px rgba(79,227,255,.25);text-shadow:0 0 6px rgba(79,227,255,.8);font-family:system-ui,sans-serif}
+.ejs_virtualGamepad_button:active,.ejs_virtualGamepad_button_down{background:rgba(79,227,255,.45)!important;color:#00141c!important}
+.ejs_virtualGamepad_right{width:150px!important;height:150px!important;right:22px!important}
+.ejs_virtualGamepad_left{width:150px!important;height:150px!important;left:14px!important}
 #err{display:none;position:fixed;inset:0;color:#ececf1;font:15px/1.5 system-ui,sans-serif;padding:24px;text-align:center;align-items:center;justify-content:center}
 </style>
 </head>
@@ -109,6 +115,45 @@ function getRom(id) {
       window.EJS_emulator.on("saveDatabaseLoaded", putFiles);
     }, 5);
   }
+  // On-screen controls: a joystick instead of the d-pad (it still presses the d-pad directions),
+  // and the face buttons spread further apart so they're easier to hit.
+  window.EJS_tweakGamepad = (info) => {
+    const out = [];
+    // Face buttons sit in a 150px box anchored bottom-right; each is 50px.
+    // Work out every button's real x/y (EmulatorJS treats a missing left/right/top as 0),
+    // spread the group up to 1.45x without exceeding ~230px wide, keep its right and bottom edges in place.
+    const BOX = 150, SIZE = 50, MAX_SPAN_X = 180, MAX_SPAN_Y = 150, K = 1.45;
+    const face = info.filter((b) => b.type === "button" && b.location === "right" && !b.block);
+    if (face.length >= 3) {
+      const pos = face.map((b) => ({
+        b,
+        x: typeof b.left === "number" ? b.left : typeof b.right === "number" ? BOX - SIZE - b.right : 0,
+        y: typeof b.top === "number" ? b.top : 0,
+      }));
+      const xs = pos.map((p) => p.x), ys = pos.map((p) => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+      const kx = maxX > minX ? Math.min(K, MAX_SPAN_X / (maxX - minX)) : 1;
+      const ky = maxY > minY ? Math.min(K, MAX_SPAN_Y / (maxY - minY)) : 1;
+      const newMaxX = minX + (maxX - minX) * kx, newMaxY = minY + (maxY - minY) * ky;
+      const shiftX = Math.min(BOX - SIZE, maxX) - newMaxX;   // keep the right edge where it was (inside the box)
+      const shiftY = maxY - newMaxY;                          // keep the bottom row where it was
+      for (const p of pos) {
+        p.b.left = Math.round(minX + (p.x - minX) * kx + shiftX);
+        p.b.top = Math.round(minY + (p.y - minY) * ky + shiftY);
+        delete p.b.right;
+      }
+    }
+    for (const item of info) {
+      if (item.type === "dpad") {
+        out.push({ type: "zone", id: item.id || "dpad", location: item.location || "left", left: "50%", top: "50%",
+          joystickInput: false, inputValues: item.inputValues || [4, 5, 6, 7], color: "#4fe3ff", size: 120 });
+      } else {
+        if (item.type === "zone" && !item.color) item.color = "#4fe3ff";
+        out.push(item);
+      }
+    }
+    return out;
+  };
   window.EJS_player = "#game";
   window.EJS_core = core;
   window.EJS_gameName = rom.id;                                  // saves + states are keyed by this
