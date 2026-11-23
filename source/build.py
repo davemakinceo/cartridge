@@ -7,6 +7,7 @@ core = (root/"node_modules/jsnes/dist/jsnes.min.js").read_text()
 html = (root/"src/app.html").read_text().replace("/*__JSNES__*/", "/* JSNES 3.0.0 — Apache-2.0 — github.com/bfirsh/jsnes */\n" + core.replace("</script", "<\\/script"))
 (out/"index.html").write_text(html)
 shutil.copy(root/"src/play.html", out/"play.html")
+shutil.copy(root/"src/pad.js", out/"pad.js")
 
 # ---- EmulatorJS runtime (GPL-3.0) ----
 ejs_src = root/"node_modules/@emulatorjs/emulatorjs/data"
@@ -44,7 +45,7 @@ icon(192).save(out/"icon-192.png"); icon(512).save(out/"icon-512.png"); icon(512
   "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
             {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
             {"src": "icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}]}, indent=1))
-shell = ["./", "index.html", "play.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable.png",
+shell = ["./", "index.html", "play.html", "pad.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable.png",
          "ejs/loader.js", "ejs/emulator.min.js", "ejs/emulator.min.css", "ejs/localization/en-US.json",
          "ejs/compression/extractzip.js", "ejs/compression/extract7z.js"]
 ver = hashlib.sha1(b"".join((out/f).read_bytes() for f in shell if f != "./")).hexdigest()[:10]

@@ -9,6 +9,8 @@
 <title>Cartridge</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
+<script>window.__cartridgeApp = true;</script>
+<script src="pad.js"></script>
 <style>
 :root{
   --bg:#121216; --panel:#1c1c22; --panel2:#26262e; --line:#33333d;
@@ -131,6 +133,12 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .pick button{padding:12px;border-radius:10px;background:var(--btn);text-align:left;font-size:14px}
 .offline{margin-top:14px;width:100%;padding:12px;border-radius:12px;background:var(--panel);color:var(--text);font-size:14px;font-weight:600}
 .offline small{display:block;color:var(--mute);font-weight:400;font-size:12px}
+/* controller setup */
+#calSheet .big{font-size:30px;font-weight:700;text-align:center;margin:18px 0 4px}
+#calSheet .sub{color:var(--mute);text-align:center;font-size:14px;min-height:20px}
+#calSheet .prog{height:6px;border-radius:3px;background:var(--panel2);margin:18px 0 14px;overflow:hidden}
+#calSheet .prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.gp-banner button{margin-left:auto;flex:none;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.12);color:inherit;font-size:12px;font-weight:700}
 /* controller */
 .gp-banner{display:none;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#1f2a1f;color:#b9f0b9;font-size:13px;margin:-10px 0 20px}
 .gp-banner.show{display:flex}
@@ -163,6 +171,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   <div class="gp-banner" id="gpBanner">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 11h4M8 9v4M15 12h.01M18 10h.01M7 5h10a4 4 0 014 4l1 7a3 3 0 01-5 2l-2-2H9l-2 2a3 3 0 01-5-2l1-7a4 4 0 014-4z"/></svg>
     <span id="gpText">Controller connected</span>
+    <button id="gpSetup" class="hidden">Set up buttons</button>
   </div>
   <div class="list-h"><span>Your library</span><span id="count"></span></div>
   <div class="chips" id="chips"></div>
@@ -222,7 +231,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <div class="opts">
       <button class="opt" id="optTurbo">Turbo buttons<small id="optTurboS">Off</small></button>
       <button class="opt" id="optVib">Vibration<small id="optVibS">On</small></button>
-      <button class="opt" id="optPad">Controller buttons<small>Remap your gamepad</small></button>
+      <button class="opt" id="optCal">Set up controller<small>Fix buttons that are wrong</small></button>
+      <button class="opt" id="optPad">NES buttons<small>Choose what each button does</small></button>
       <button class="opt" id="optTouch">On-screen controls<small id="optTouchS">Auto</small></button>
       <button class="opt" id="optFull">Full screen<small>Hide browser bars</small></button>
       <button class="opt danger" id="optReset">Reset game<small>Like the console button</small></button>
@@ -240,6 +250,19 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
       <button class="opt" id="mapDone" style="text-align:center;background:var(--accent);color:#fff">Done</button>
     </div>
     <p class="hint" style="margin:12px 2px 0">Also on the controller: <b>Select + Start</b> or <b>Home</b> opens the menu, hold <b>R1</b> to fast-forward. A second controller plays as Player 2.</p>
+  </div>
+</div>
+<div id="calSheet" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:12;display:flex;align-items:flex-end;justify-content:center">
+  <div class="sheet-in">
+    <h3 id="calHead">Set up controller</h3>
+    <div class="big" id="calBig"></div>
+    <div class="sub" id="calSub"></div>
+    <div class="prog"><i id="calProg"></i></div>
+    <div class="opts">
+      <button class="opt" id="calSkip" style="text-align:center">Skip this one</button>
+      <button class="opt" id="calCancel" style="text-align:center">Cancel</button>
+      <button class="opt wide hidden" id="calReset" style="text-align:center">Clear setup for this controller</button>
+    </div>
   </div>
 </div>
 <div id="dlg" class="hidden"><div class="dlg-in"><div id="dlgMsg"></div><div class="pick" id="dlgPick"></div><div class="dlg-row"><button id="dlgNo">Cancel</button><button class="ok" id="dlgOk">OK</button></div></div></div>
@@ -896,7 +919,7 @@ const gpPlayer = new Map();       // pad index -> 1 | 2
 let gpSuppress = false, gpUsed = false, gpListen = null;
 let navRepeat = { dir: null, t: 0 };
 
-function padsList() { return navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; }
+function padsList() { return window.CartridgePad ? [...CartridgePad.raw()].filter(Boolean).map((g) => navigator.getGamepads()[g.index] || g) : navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : []; }
 function assignPlayers() {
   gpPlayer.clear();
   padsList().sort((a, b) => a.index - b.index).forEach((gp, i) => gpPlayer.set(gp.index, i === 0 ? 1 : 2));
@@ -909,7 +932,10 @@ function updateGpBanner() {
   const pads = padsList();
   $("gpBanner").classList.add("show");
   $("gpBanner").classList.toggle("idle", !pads.length);
+  $("gpSetup").classList.toggle("hidden", !pads.length);
+  const needs = pads.find((g) => g.mapping !== "standard" && !(settings.gpCal && settings.gpCal[g.id]));
   if (!pads.length) $("gpText").textContent = "Using a Backbone or other controller? Press any button on it so your browser can see it.";
+  else if (needs) $("gpText").textContent = `${padName(needs)} connected. Its buttons may be in an unusual order — tap Set up buttons once.`;
   else $("gpText").textContent = pads.length > 1
     ? `${pads.length} controllers connected — Player 1 & 2 ready. D-pad + A to pick a game.`
     : `${padName(pads[0])} connected — use the D-pad and A to pick a game.`;
@@ -919,8 +945,8 @@ window.addEventListener("gamepadconnected", (e) => {
   const gp = e.gamepad, pl = gpPlayer.get(gp.index) || 1;
   toast(`${isBackbone(gp) ? "Backbone One" : "Controller"} connected · Player ${pl}`);
   if (isBackbone(gp) || running) setGpMode(true);          // clip-on controller: hide touch buttons right away
-  if (gp.mapping !== "standard")
-    setTimeout(() => toast("Unusual button layout — check Menu → Controller buttons"), 1800);
+  if (gp.mapping !== "standard" && !(settings.gpCal && settings.gpCal[gp.id]))
+    setTimeout(() => toast("Buttons acting up? Tap “Set up buttons” in the library"), 1800);
 });
 window.addEventListener("gamepaddisconnected", (e) => {
   const prev = gpPrev.get(e.gamepad.index) || {}, pl = gpPlayer.get(e.gamepad.index) || 1;
@@ -951,6 +977,7 @@ function readPad(gp) {
 function pollGamepads() {
   const pads = padsList();
   if (!pads.length) return;
+  if (calState) return pollCal();
   if (gpListen) return listenForButton(pads);
   if (ejsActive) { gpSuppress = true; return; }                 // EmulatorJS reads the controllers itself
   const uiActive = !running || !$("sheet").classList.contains("hidden") ||
@@ -1056,6 +1083,75 @@ function listenForButton(pads) {
   gpListen = null; gpSuppress = true; saveSettings(); renderMap();
 }
 
+/* --- controller setup: press each button once; pad.js then reorders them to the standard layout --- */
+const CAL_STEPS = [
+  [0, "✕  /  A", "Bottom face button"], [1, "○  /  B", "Right face button"], [2, "□  /  X", "Left face button"],
+  [3, "△  /  Y", "Top face button"], [4, "L1", "Left bumper"], [5, "R1", "Right bumper"],
+  [6, "L2", "Left trigger"], [7, "R2", "Right trigger"],
+  [8, "Select", "Create / View — or any spare button you want as Select"],
+  [9, "Start", "Options / Menu ☰ — or any spare button you want as Start"],
+  [12, "D-pad ▲", "Up"], [13, "D-pad ▼", "Down"], [14, "D-pad ◀", "Left"], [15, "D-pad ▶", "Right"],
+];
+let calState = null;
+function rawPads() { return window.CartridgePad ? [...CartridgePad.raw()].filter(Boolean) : padsList(); }
+function startCal() {
+  const pads = rawPads();
+  if (!pads.length) { toast("Press any button on your controller first"); return; }
+  const gp = pads.find((p) => p.buttons.some((b) => b.pressed)) || pads[0];
+  calState = { id: gp.id, idx: gp.index, map: {}, used: new Set(), step: 0, base: [...gp.axes], waitRelease: true };
+  $("calHead").textContent = `Set up ${padName(gp)}`;
+  $("calReset").classList.toggle("hidden", !(settings.gpCal && settings.gpCal[gp.id]));
+  $("calSheet").classList.remove("hidden");
+  renderCal();
+}
+function renderCal() {
+  const st = CAL_STEPS[calState.step];
+  $("calBig").textContent = st ? st[1] : "Done";
+  $("calSub").textContent = st ? `Press: ${st[2]}` : "";
+  $("calProg").style.width = (100 * calState.step / CAL_STEPS.length) + "%";
+}
+function endCal(save) {
+  if (running && $("sheet").classList.contains("hidden")) { paused = false; last = 0; }
+  if (save && calState) {
+    settings.gpCal = { ...(settings.gpCal || {}), [calState.id]: calState.map };
+    if (window.CartridgePad) CartridgePad.set(settings.gpCal);
+    saveSettings();
+    toast("Controller set up ✓ — works in every system");
+  }
+  calState = null; gpSuppress = true;
+  $("calSheet").classList.add("hidden");
+  updateGpBanner();
+}
+function nextCal() {
+  calState.step++; calState.waitRelease = true;
+  if (calState.step >= CAL_STEPS.length) endCal(true); else renderCal();
+}
+function pollCal() {
+  const gp = (window.CartridgePad ? CartridgePad.raw() : navigator.getGamepads())[calState.idx];
+  if (!gp) return;
+  const pressedBtn = gp.buttons.findIndex((b, i) => b.pressed && !calState.used.has("b" + i));
+  const moved = gp.axes.findIndex((a, i) => Math.abs(a - (calState.base[i] || 0)) > 0.6 && !calState.used.has("a" + i + Math.sign(a - (calState.base[i] || 0))));
+  const anyActive = gp.buttons.some((b) => b.pressed) || gp.axes.some((a, i) => Math.abs(a - (calState.base[i] || 0)) > 0.35);
+  if (calState.waitRelease) { if (!anyActive) calState.waitRelease = false; return; }
+  const target = CAL_STEPS[calState.step][0];
+  if (pressedBtn >= 0) {
+    calState.map[target] = { t: "b", i: pressedBtn }; calState.used.add("b" + pressedBtn);
+  } else if (moved >= 0) {
+    const rest = calState.base[moved] || 0, d = Math.sign(gp.axes[moved] - rest);
+    calState.map[target] = { t: "a", i: moved, rest, d };   // value = (axis - rest) * d, clamped 0..1
+    calState.used.add("a" + moved + d);
+  } else return;
+  buzz(); nextCal();
+}
+$("calSkip").onclick = () => calState && nextCal();
+$("calCancel").onclick = () => endCal(false);
+$("calReset").onclick = () => {
+  if (calState && settings.gpCal) { delete settings.gpCal[calState.id]; CartridgePad?.set(settings.gpCal); saveSettings(); toast("Controller setup cleared"); }
+  endCal(false);
+};
+$("optCal").onclick = () => { $("sheet").classList.add("hidden"); startCal(); };
+$("gpSetup").onclick = startCal;
+
 /* one poll loop for menus + gameplay */
 (function gpLoop() { pollGamepads(); requestAnimationFrame(gpLoop); })();
 
@@ -1153,6 +1249,7 @@ window.addEventListener("pagehide", () => saveSRAM());
 /* ---------------- boot ---------------- */
 (async () => {
   try { const s = await DB.get("kv", "settings"); if (s) Object.assign(settings, s); if (!settings.gpMap) settings.gpMap = { ...DEFAULT_MAP }; } catch {}
+  if (window.CartridgePad) CartridgePad.set(settings.gpCal || {});
   assignPlayers(); updateGpBanner(); setGpMode(false);
   syncOpts(); syncMute();
   renderLibrary();

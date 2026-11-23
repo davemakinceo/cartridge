@@ -11,6 +11,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavi
 </style>
 </head>
 <body>
+<script src="pad.js"></script>
 <div id="game"></div>
 <div id="err"></div>
 <script>
@@ -118,7 +119,25 @@ function getRom(id) {
   window.EJS_Buttons = { netplay: false, cacheManager: false, exitEmulation: false };
   window.EJS_ready = () => post({ type: "ready" });
   const setTouchPad = (on) => { try { window.EJS_emulator.changeSettingOption("virtual-gamepad", on ? "enabled" : "disabled"); } catch {} };
+  // Friendlier physical-button defaults (EmulatorJS's put Genesis jump on ✕ and left □ unused).
+  // RetroPad slot -> controller button. Applied only while the user hasn't customised controls.
+  const LAYOUTS = {
+    // Genesis A B C across □ ✕ ○, X Y Z on L1 △ R1 · Master System / Game Gear 1 2 on ✕ ○
+    sega: { 1: "BUTTON_3", 0: "BUTTON_1", 8: "BUTTON_2", 9: "BUTTON_4", 10: "LEFT_TOP_SHOULDER", 11: "RIGHT_TOP_SHOULDER" },
+    // Street Fighter style: punches □ △ R1, kicks ✕ ○ R2 · Neo Geo A B C D = ✕ ○ □ △
+    arcade: { 1: "BUTTON_3", 9: "BUTTON_4", 10: "RIGHT_TOP_SHOULDER", 0: "BUTTON_1", 8: "BUTTON_2", 11: "RIGHT_BOTTOM_SHOULDER" },
+  };
+  const layout = ["genesis", "sms", "gg"].includes(rom.system) ? LAYOUTS.sega : ARCADE.includes(rom.system) ? LAYOUTS.arcade : null;
+  function applyLayout() {
+    const c = window.EJS_emulator?.controls?.[0];
+    if (!layout || !c) return;
+    const pristine = c[0]?.value2 === "BUTTON_2" && c[1]?.value2 === "BUTTON_4" && c[8]?.value2 === "BUTTON_1" && c[9]?.value2 === "BUTTON_3";
+    if (!pristine) return;
+    for (const k in layout) { c[k] = c[k] || {}; c[k].value2 = layout[k]; }
+    try { window.EJS_emulator.checkGamepadInputs?.(); } catch {}
+  }
   window.EJS_onGameStart = () => {
+    applyLayout();
     setTouchPad(!padAttached);          // EmulatorJS remembers this per system, so set it every launch
     post({ type: "started" });
   };
