@@ -20,13 +20,21 @@ const CORES = {
   gb: "gambatte", gbc: "gambatte", gba: "mgba", snes: "snes9x",
   genesis: "genesis_plus_gx", sms: "genesis_plus_gx", gg: "genesis_plus_gx",
   n64: "mupen64plus_next", psx: "pcsx_rearmed", a2600: "stella2014",
-  pce: "mednafen_pce", lynx: "handy",
+  pce: "mednafen_pce", lynx: "handy", arcade: "fbneo", mame: "mame2003_plus",
 };
+const ARCADE = ["arcade", "mame"];
 const post = (msg) => { try { parent.postMessage(Object.assign({ cartridge: true }, msg), location.origin); } catch {} };
 function fail(text) {
   const e = document.getElementById("err");
   e.textContent = text; e.style.display = "flex";
   post({ type: "error", message: text });
+}
+function allRoms() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("cartridge", 1);
+    r.onsuccess = () => { const t = r.result.transaction("roms", "readonly").objectStore("roms").getAll(); t.onsuccess = () => res(t.result); t.onerror = () => rej(t.error); };
+    r.onerror = () => rej(r.error);
+  });
 }
 function getRom(id) {
   return new Promise((res, rej) => {
@@ -49,7 +57,7 @@ function getRom(id) {
   // Pick the on-screen pad layout explicitly. EmulatorJS otherwise guesses from the core name, and
   // genesis_plus_gx (Genesis, Master System, Game Gear) is guessed as Master System = 2 buttons.
   const SCHEMES = { gb: "gb", gbc: "gb", gba: "gba", snes: "snes", genesis: "segaMD", sms: "segaMS", gg: "segaGG",
-    n64: "n64", psx: "psx", a2600: "atari2600", pce: "pce", lynx: "lynx" };
+    n64: "n64", psx: "psx", a2600: "atari2600", pce: "pce", lynx: "lynx", arcade: "arcade", mame: "mame" };
   window.EJS_controlScheme = SCHEMES[rom.system];
   if (rom.system === "psx") {
     // EmulatorJS has no PlayStation pad, and its fallback lacks shoulder buttons.
@@ -68,10 +76,36 @@ function getRom(id) {
       { type: "button", text: "R2", id: "r2", location: "right", right: 75, top: -100, bold: true, block: true, input_value: 13 },
     ];
   }
+  if (ARCADE.includes(rom.system)) {
+    // RetroPad ids: B0 Y1 Coin2 Start3 Up4 Down5 Left6 Right7 A8 X9 L10 R11 — punches on top, kicks below (CPS-style)
+    window.EJS_VirtualGamepadSettings = [
+      { type: "button", text: "1", id: "b1", location: "right", right: 130, top: 10, bold: true, input_value: 1 },
+      { type: "button", text: "2", id: "b2", location: "right", right: 68, top: 0, bold: true, input_value: 9 },
+      { type: "button", text: "3", id: "b3", location: "right", right: 6, top: 10, bold: true, input_value: 10 },
+      { type: "button", text: "4", id: "b4", location: "right", right: 130, top: 75, bold: true, input_value: 0 },
+      { type: "button", text: "5", id: "b5", location: "right", right: 68, top: 65, bold: true, input_value: 8 },
+      { type: "button", text: "6", id: "b6", location: "right", right: 6, top: 75, bold: true, input_value: 11 },
+      { type: "dpad", id: "dpad", location: "left", left: "50%", top: "50%", joystickInput: false, inputValues: [4, 5, 6, 7] },
+      { type: "button", text: "Coin", id: "coin", location: "center", left: -5, fontSize: 15, block: true, input_value: 2 },
+      { type: "button", text: "Start", id: "start", location: "center", left: 60, fontSize: 15, block: true, input_value: 3 },
+    ];
+    // BIOS zips (neogeo.zip…) go in the same folder as the game, still zipped.
+    let support = [];
+    try { support = (await allRoms()).filter((r) => r.bios); } catch {}
+    const putFiles = (fs) => {
+      for (const b of support) { try { fs.writeFile(b.file, b.data); } catch (e) { console.warn("BIOS write failed", b.file, e); } }
+    };
+    const hook = setInterval(() => {
+      if (!window.EJS_emulator) return;
+      clearInterval(hook);
+      window.EJS_emulator.on("saveDatabaseLoaded", putFiles);
+    }, 5);
+  }
   window.EJS_player = "#game";
   window.EJS_core = core;
   window.EJS_gameName = rom.id;                                  // saves + states are keyed by this
-  window.EJS_gameUrl = new File([rom.data], `${rom.id}.${rom.ext}`);
+  // arcade cores identify the game by its set name (sf2.zip), so keep it
+  window.EJS_gameUrl = new File([rom.data], ARCADE.includes(rom.system) && rom.file ? rom.file : `${rom.id}.${rom.ext}`);
   window.EJS_pathtodata = "ejs/";
   window.EJS_startOnLoaded = true;
   window.EJS_color = "#e5484d";

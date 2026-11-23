@@ -22,7 +22,7 @@ shutil.copytree(ejs_src/"compression", ejs/"compression")
 shutil.copy(ejs_src/"localization/en-US.json", ejs/"localization/en-US.json")
 shutil.copy(root/"node_modules/@emulatorjs/emulatorjs/LICENSE", ejs/"LICENSE.txt")
 (ejs/"version.json").write_text((ejs_src/"version.json").read_text())
-CORES = ["gambatte","mgba","snes9x","genesis_plus_gx","mupen64plus_next","pcsx_rearmed","stella2014","mednafen_pce","handy"]
+CORES = ["fbneo","mame2003_plus","gambatte","mgba","snes9x","genesis_plus_gx","mupen64plus_next","pcsx_rearmed","stella2014","mednafen_pce","handy"]
 for c in CORES:
     pkg = root/f"node_modules/@emulatorjs/core-{c}"
     for v in ("wasm", "legacy-wasm"):
